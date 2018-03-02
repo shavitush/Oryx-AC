@@ -1,0 +1,12 @@
+Plugin(source='addons/sourcemod/scripting/oryx.sp')
+Plugin(source='addons/sourcemod/scripting/oryx-configcheck.sp')
+Plugin(source='addons/sourcemod/scripting/oryx-sanity.sp')
+Plugin(source='addons/sourcemod/scripting/oryx-scroll.sp')
+Plugin(source='addons/sourcemod/scripting/oryx-strafe.sp')
+
+Package(name='Oryx-AC',
+        plugins=['oryx', 'oryx-configcheck', 'oryx-sanity', 'oryx-scroll', 'oryx-strafe'],
+        filegroups={
+            '.': ['README.md', 'LICENSE'],
+        },
+)
