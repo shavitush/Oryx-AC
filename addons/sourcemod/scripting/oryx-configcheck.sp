@@ -35,6 +35,8 @@ int gI_PreviousButtons[MAXPLAYERS+1];
 int gI_JumpsFromZone[MAXPLAYERS+1];
 #endif
 
+bool gB_Shavit = false;
+
 public Plugin myinfo = 
 {
 	name = "ORYX movement config module",
@@ -49,6 +51,8 @@ public void OnPluginStart()
 	RegAdminCmd("config_streak", Command_ConfigStreak, ADMFLAG_BAN, "Print the config stat buffer for a given player.");
 
 	LoadTranslations("common.phrases");
+
+	gB_Shavit = LibraryExists("shavit");
 }
 
 public void OnClientPutInServer(int client)
@@ -57,6 +61,22 @@ public void OnClientPutInServer(int client)
 	#if defined bhoptimer
 	gI_JumpsFromZone[client] = 0;
 	#endif
+}
+
+public void OnLibraryAdded(const char[] name)
+{
+	if(StrEqual(name, "shavit"))
+	{
+		gB_Shavit = true;
+	}
+}
+
+public void OnLibraryRemoved(const char[] name)
+{
+	if(StrEqual(name, "shavit"))
+	{
+		gB_Shavit = false;
+	}
 }
 
 public Action Command_ConfigStreak(int client, int args)
@@ -85,12 +105,36 @@ public Action Command_ConfigStreak(int client, int args)
 		strcopy(sAuth, 32, "ERR_GETTING_ID");
 	}
 		
-	ReplyToCommand(client, "\n\n\nUser \x03%N\x01 (\x05%s\x01) is on a config streak of \x04%d\x01.", target, sAuth, gI_PerfectConfigStreak[target]);
+	ReplyToCommand(client, "User \x03%N\x01 (\x05%s\x01) is on a config streak of \x04%d\x01.", target, sAuth, gI_PerfectConfigStreak[target]);
 	
 	return Plugin_Handled;
 }
 
 public Action OnPlayerRunCmd(int client, int &buttons)
+{
+	if(gB_Shavit || !IsPlayerAlive(client) || IsFakeClient(client))
+	{
+		return Plugin_Continue;
+	}
+
+	return SetupMove(client, buttons);
+}
+
+public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style)
+{
+	// Ignore whitelisted styles.
+	char[] sSpecial = new char[32];
+	Shavit_GetStyleStrings(style, sSpecialString, sSpecial, 32);
+
+	if(StrContains(sSpecial, "oryx_bypass", false) != -1)
+	{
+		return Plugin_Continue;
+	}
+
+	return SetupMove(client, buttons);
+}
+
+Action SetupMove(int client, int &buttons)
 {
 	if(!IsPlayerAlive(client) || IsFakeClient(client))
 	{
@@ -159,7 +203,7 @@ void PerfectTransition(int client)
 		Oryx_Trigger(client, TRIGGER_MEDIUM, DESC1);
 	}
 
-	else if(gI_PerfectConfigStreak[client] % 510 == 0) // 510 or above
+	else if(gI_PerfectConfigStreak[client] % 510 == 0) // 510 or above (1020, 1530 etc)
 	{
 		Oryx_Trigger(client, TRIGGER_HIGH_NOKICK, DESC1);
 	}

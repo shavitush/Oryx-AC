@@ -66,7 +66,34 @@ Scripted jumps (nobf, bf-af, noaf) | Inhuman stats for scrolls before touching t
 Scroll macro (highn) | Way too many scroll inputs per jump, giving away the player using some kind of jump macro | oryx-scroll
 Scroll cheat (interval, ticks) | Analysis on interval between scrolls ~~and ticks on ground~~ (WIP). These methods are at low detection level due to the nature of UDP causing packets to not be in the correct order all the time | oryx-scroll
 
-**Note**: `oryx-sanity` **will** cause false positives with gamepads and controllers.
+**Note**: `oryx-sanity` **will** cause false positives with gamepads and controllers.  
+**Note 2**: If using [bhoptimer](https://github.com/shavitush/bhoptimer), add `oryx_bypass` to the special string. This setting will disable the sanity, strafe, and movement config anticheats from triggering on the style. For example:
+
+```
+"7"
+{
+	"name"				"Hack vs Hack"
+	"shortname"			"HVH"
+	"htmlcolor"			"FFFFFF"
+	"command"			"hvh"
+	"clantag"			"HVH"
+
+	"rankingmultiplier"	"0.0"
+	"specialstring"		"oryx_bypass"
+}
+
+"8"
+{
+	"name"				"Autostrafer"
+	"shortname"			"AS"
+	"htmlcolor"			"FFFFFF"
+	"command"			"autostrafe"
+	"clantag"			"AS"
+
+	"rankingmultiplier"	"0.0"
+	"specialstring"		"100gainstrafe;tas;oryx_bypass"
+}
+```
 
 Docs on natives are found in `oryx.inc`, using the SourceMod self-documenting style.
 
@@ -76,6 +103,7 @@ The plugins have only been tested with bhoptimer v1.5b (as found [here](https://
 
 Relevant information will be logged into `addons/sourcemod/logs/oryx-ac.log`.  
 Scroll cheaters will be listed in `addons/sourcemod/logs/oryx-ac-scroll.log`.  
+Strafe hackers will be listed in `addons/sourcemod/logs/oryx-strafe-stats.log`.  
 Chat messages will be printed to admins with `sm_ban` access, or the `oryx_admin` override. Admins will hear a beep sound to grab their attention when needed.
 
 # Useful Definitions

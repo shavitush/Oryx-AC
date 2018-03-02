@@ -306,6 +306,15 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 		return Plugin_Continue;
 	}
 
+	// Ignore whitelisted styles.
+	char[] sSpecial = new char[32];
+	Shavit_GetStyleStrings(style, sSpecialString, sSpecial, 32);
+
+	if(StrContains(sSpecial, "oryx_bypass", false) != -1)
+	{
+		return Plugin_Continue;
+	}
+
 	return SetupMove(client, buttons);
 }
 
