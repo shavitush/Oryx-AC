@@ -76,15 +76,15 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	{
 		Oryx_Trigger(client, TRIGGER_DEFINITIVE, DESC1);
 	}
-	
-	else if(!IsValidMove(vel[0]) || !IsValidMove(vel[1]))
-	{
-		Oryx_Trigger(client, TRIGGER_DEFINITIVE, DESC2);
-	}
 
 	else if(FloatAbs(vel[0]) > gF_FullPress || FloatAbs(vel[1]) > gF_FullPress)
 	{
 		Oryx_Trigger(client, TRIGGER_DEFINITIVE, DESC3);
+	}
+	
+	else if(!IsValidMove(vel[0]) || !IsValidMove(vel[1]))
+	{
+		Oryx_Trigger(client, TRIGGER_DEFINITIVE, DESC2);
 	}
 
 	return Plugin_Continue;
