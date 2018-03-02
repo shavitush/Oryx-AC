@@ -1,15 +1,27 @@
-# The Oryx bhop anticheat for CSS.
+# The Oryx bunnyhop anticheat for CS:S, CS:GO, and TF2.
 
-This was written for SourceMod v1.7. Few comments are provided because I never planned on releasing the code, however there are *some* comments. The bulk of everything outside of oryx.sp is just pure game-mechanic-related logic anyway, so it just works because that's the way things work.
+This is a fork of Oryx, the bunnyhop anticheat written by Rusty/Nolan-O. The README will be mostly left untouched unless I need to change anything.
 
-## Users please note that this project is no longer supported.
+The main differences from the original version are:
+
+* I have supported CS:GO and TF2.
+* I edited the plugin to work with [bhoptimer](https://github.com/shavitush/bhoptimer). [bTimes](https://github.com/Nolan-O/bTimes) support has been dropped.
+* [smlib](https://github.com/splewis/smlib) is not a dependency anymore.
+* Optimizations have been applied.
+* Cleaned the code where I could.
+* SourceMod 1.9 is the target version. Support for older versions of SourceMod will not be provided.
+
+Rusty's notes:
+
+> This was written for SourceMod v1.7. Few comments are provided because I never planned on releasing the code, however there are *some* comments. The bulk of everything outside of oryx.sp is just pure game-mechanic-related logic anyway, so it just works because that's the way things work.
 
 # Building
 
-Depends on smlib.  
-All you need to do is make sure you've specified your timer in oryx.inc by defining either `notimer` or `bTimes`. Build each file manually with the sourcemod compiler, like usual.  
+All you need to do is make sure you've specified your timer in oryx.inc by defining either `notimer` or `bhoptimer`. Build each file manually with the SourceMod compiler, like usual.  
+If `bhoptimer` is defined, you will need [bhoptimer](https://github.com/shavitush/bhoptimer)'s include file.
 
 # Documentation  
+
 A lot of this info is found in oryx.inc too.
 
 Exported command | Action | Admin only? | From: 
@@ -39,15 +51,21 @@ Average strafe too close to 0 | The average strafe offset is suspiciously near 0
 Too many perfect strafes | The average strafe offset is not too close to 0, but there is a suspiciously high frequency of 0s | oryx-strafe
 Movement config | Player exhibits behavior that is humanly possible, but movement configs would enforce it | oryx-configcheck
 Unsynchronised movement | Wish velocity does not align with with the player's buttons variable | oryx-sanity
-Invalid wish velocity | Wish velocity can only be multiples of 100, bound to 400 and -400 | oryx-sanity
+Invalid wish velocity | Wish velocity can only be specific values ([link 1](https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#557), [link 2](https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#842)) | oryx-sanity
+Wish velocity is too high | Wish velocity exceeds the default `cl_forwardspeed` or `cl_sidespeed` settings | oryx-sanity
 Script on scroll | Too many perfect jumps indicates a potential jump script usage | oryx-scroll
 Hyperscroll | Too many jumps in the air prior to jumping indicates potential +jump spamming | oryx-scroll
 
+**Note**: `oryx-sanity` will cause false positives with gamepads and controllers.
 
-Docs on natives are found in oryx.inc, using the sm self-documenting style.
+Docs on natives are found in oryx.inc, using the SourceMod self-documenting style.
 
-The plugins have only been tested with bTimes ~v1.8.x (as found [here](https://github.com/Nolan-O/bTimes))  
-If someone else is able to test with 2.0, please edit this readme and submit a pull request.
+The plugins have only been tested with bhoptimer v1.5b (as found [here](https://github.com/shavitush/bhoptimer)).
+
+# Logs
+
+Relevant information will be logged into `addons/sourcemod/logs/oryx-ac.log`.  
+Chat messages will be printed to admins with `sm_ban` access, or the `oryx_admin` override. Admins will hear a beep sound to grab their attention when needed.
 
 # Useful Definitions
 
