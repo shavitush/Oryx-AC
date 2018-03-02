@@ -164,7 +164,7 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	else if(level == TRIGGER_HIGH)
 	{
 		strcopy(sLevel, 16, "HIGH");
-		KickClient(client, "%s", sCheatDescription);
+		KickClient(client, "[ORYX] %s", sCheatDescription);
 	}
 
 	else if(level == TRIGGER_HIGH_NOKICK)
@@ -175,13 +175,13 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	else if(level == TRIGGER_DEFINITIVE)
 	{
 		strcopy(sLevel, 16, "DEFINITIVE");
-		KickClient(client, "%s", sCheatDescription);
+		KickClient(client, "[ORYX] %s", sCheatDescription);
 	}
 
 	else if(level == TRIGGER_TEST)
 	{
 		char[] sBuffer = new char[128];
-		Format(sBuffer, 128, "(\x03%N\x01) - %s | Level: %s", client, sCheatDescription, "TESTING");
+		Format(sBuffer, 128, "(\x03%N\x01) - %s | Level: \x04TESTING", client, sCheatDescription);
 
 		for(int i = 1; i <= MaxClients; i++)
 		{

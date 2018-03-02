@@ -46,7 +46,7 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-	RegAdminCmd("config_streak", Command_ConfigStreak, ADMFLAG_GENERIC, "Print the config stat buffer for a given player.");
+	RegAdminCmd("config_streak", Command_ConfigStreak, ADMFLAG_BAN, "Print the config stat buffer for a given player.");
 
 	LoadTranslations("common.phrases");
 }
