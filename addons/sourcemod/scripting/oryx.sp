@@ -169,7 +169,7 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 
 	else if(level == TRIGGER_HIGH_NOKICK)
 	{
-		strcopy(sLevel, 16, "HIGH-nk");
+		strcopy(sLevel, 16, "HIGH-NOKICK");
 	}
 
 	else if(level == TRIGGER_DEFINITIVE)
@@ -181,7 +181,7 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	else if(level == TRIGGER_TEST)
 	{
 		char[] sBuffer = new char[128];
-		Format(sBuffer, 128, "(\x04%N\x01) : %s | Level: %s", client, sCheatDescription, "TESTING");
+		Format(sBuffer, 128, "(\x03%N\x01) - %s | Level: %s", client, sCheatDescription, "TESTING");
 
 		for(int i = 1; i <= MaxClients; i++)
 		{
@@ -195,10 +195,10 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	}
 
 	char[] sAuth = new char[32];
-	GetClientAuthId(client, AuthId_Steam2, sAuth, 32);
+	GetClientAuthId(client, AuthId_Steam3, sAuth, 32);
 
 	char[] sBuffer = new char[128];
-	Format(sBuffer, 128, "%N (%s) Cheat: %s | Level: %s", client, sAuth, sCheatDescription, sLevel);
+	Format(sBuffer, 128, "\x03%N\x01 - \x05%s\x01 Cheat: %s | Level: %s", client, sAuth, sCheatDescription, sLevel);
 	Oryx_PrintToAdmins(sBuffer);
 	
 	LogToFileEx(gS_LogPath, "%L - Cheat: %s | Level: %s", client, sCheatDescription, sLevel);
@@ -222,7 +222,7 @@ public int Native_PrintToAdmins(Handle plugin, int numParams)
 	{
 		if(CheckCommandAccess(i, "oryx_admin", ADMFLAG_GENERIC))
 		{
-			PrintToChat(i, "%s", sMessage);
+			PrintToChat(i, "%s\x04[ORYX]\x01 %s", (gEV_Type == Engine_CSGO)? " ":"", sMessage);
 
 			if(gEV_Type == Engine_CSS || gEV_Type == Engine_TF2)
 			{
@@ -246,7 +246,7 @@ public int Native_PrintToAdminsConsole(Handle plugin, int numParams)
 	{
 		if(CheckCommandAccess(i, "oryx_admin", ADMFLAG_GENERIC))
 		{
-			PrintToConsole(i, "%s", sMessage);
+			PrintToConsole(i, "[ORYX] %s", sMessage);
 		}
 	}
 }
