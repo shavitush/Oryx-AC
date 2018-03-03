@@ -1,15 +1,37 @@
-# The Oryx bhop anticheat for CSS.
+[![Discord server](https://discordapp.com/api/guilds/389675819959844865/widget.png?style=shield)](https://discord.gg/jyA9q5k)
 
-This was written for SourceMod v1.7. Few comments are provided because I never planned on releasing the code, however there are *some* comments. The bulk of everything outside of oryx.sp is just pure game-mechanic-related logic anyway, so it just works because that's the way things work.
+### Build status
+[![Build status](https://travis-ci.org/shavitush/Oryx-AC.svg?branch=master)](https://travis-ci.org/shavitush/Oryx-AC)
 
-## Users please note that this project is no longer supported.
+# The Oryx bunnyhop anticheat for CS:S, CS:GO, and TF2.
+
+This is a fork of Oryx, the bunnyhop anticheat written by Rusty/Nolan-O. The README will be mostly left untouched unless I need to change anything.
+
+The main differences from the original version are:
+
+* I have supported CS:GO and TF2.
+* I edited the plugin to work with [bhoptimer](https://github.com/shavitush/bhoptimer). [bTimes](https://github.com/Nolan-O/bTimes) support has been dropped.
+* [smlib](https://github.com/splewis/smlib) is not a dependency anymore.
+* Optimizations have been applied.
+* Cleaned the code where I could. Most plugins will look as if they were rewritten, as I don't like the way Rusty wrote them in first place.
+* SourceMod 1.9 is the target version. Support for older versions of SourceMod will not be provided.
+* More detection methods have been added.
+
+Rusty's notes:
+
+> This was written for SourceMod v1.7. Few comments are provided because I never planned on releasing the code, however there are *some* comments. The bulk of everything outside of oryx.sp is just pure game-mechanic-related logic anyway, so it just works because that's the way things work.
 
 # Building
 
-Depends on smlib.  
-All you need to do is make sure you've specified your timer in oryx.inc by defining either `notimer` or `bTimes`. Build each file manually with the sourcemod compiler, like usual.  
+You need DHooks to build. You also need DHooks on your server for `oryx-sanity` and `oryx-strafe` to work.  
+It depends on gamedata from SDKTools therefore shouldn't break unless your server is out of date.
+
+All you need to do is make sure you've specified your timer in oryx.inc by defining either `notimer` or `bhoptimer`. Build each file manually with the SourceMod compiler, like usual.  
+If `bhoptimer` is defined, you will need [bhoptimer](https://github.com/shavitush/bhoptimer)'s include file.  
+Send a pull request if you want to support other timers.
 
 # Documentation  
+
 A lot of this info is found in oryx.inc too.
 
 Exported command | Action | Admin only? | From: 
@@ -39,15 +61,54 @@ Average strafe too close to 0 | The average strafe offset is suspiciously near 0
 Too many perfect strafes | The average strafe offset is not too close to 0, but there is a suspiciously high frequency of 0s | oryx-strafe
 Movement config | Player exhibits behavior that is humanly possible, but movement configs would enforce it | oryx-configcheck
 Unsynchronised movement | Wish velocity does not align with with the player's buttons variable | oryx-sanity
-Invalid wish velocity | Wish velocity can only be multiples of 100, bound to 400 and -400 | oryx-sanity
-Script on scroll | Too many perfect jumps indicates a potential jump script usage | oryx-scroll
-Hyperscroll | Too many jumps in the air prior to jumping indicates potential +jump spamming | oryx-scroll
+Invalid wish velocity | Wish velocity can only be specific values ([link 1](https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#557), [link 2](https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#842)) | oryx-sanity
+Wish velocity is too high | Wish velocity exceeds the default `cl_forwardspeed` or `cl_sidespeed` settings | oryx-sanity
+Wrong mouse inputs | Raw input has discrepancies with the view angles' yaw delta | oryx-sanity
+Scripted jumps (havg) | Too many perfect jumps indicates a potential jump script usage | oryx-scroll
+Scripted jumps (havgp, patt1, patt2, wpatt, wpatt2) | Too many perfect jumps while maintaining obviously weird scroll stats | oryx-scroll
+Scripted jumps (nobf, bf-af, noaf) | Inhuman stats for scrolls before touching the ground and after jumping | oryx-scroll
+Scroll macro (highn) | Way too many scroll inputs per jump, giving away the player using some kind of jump macro | oryx-scroll
+Scroll cheat (interval, ticks) | Analysis on interval between scrolls ~~and ticks on ground~~ (WIP). These methods are at low detection level due to the nature of UDP causing packets to not be in the correct order all the time | oryx-scroll
 
+**Note**: `oryx-sanity` **will** cause false positives with gamepads and controllers.  
+**Note 2**: If using [bhoptimer](https://github.com/shavitush/bhoptimer), add `oryx_bypass` to the special string. This setting will disable the sanity, strafe, and movement config anticheats from triggering on the style. For example:
 
-Docs on natives are found in oryx.inc, using the sm self-documenting style.
+```
+"7"
+{
+	"name"				"Hack vs Hack"
+	"shortname"			"HVH"
+	"htmlcolor"			"FFFFFF"
+	"command"			"hvh"
+	"clantag"			"HVH"
 
-The plugins have only been tested with bTimes ~v1.8.x (as found [here](https://github.com/Nolan-O/bTimes))  
-If someone else is able to test with 2.0, please edit this readme and submit a pull request.
+	"rankingmultiplier"	"0.0"
+	"specialstring"		"oryx_bypass"
+}
+
+"8"
+{
+	"name"				"Autostrafer"
+	"shortname"			"AS"
+	"htmlcolor"			"FFFFFF"
+	"command"			"autostrafe"
+	"clantag"			"AS"
+
+	"rankingmultiplier"	"0.0"
+	"specialstring"		"100gainstrafe;tas;oryx_bypass"
+}
+```
+
+Docs on natives are found in `oryx.inc`, using the SourceMod self-documenting style.
+
+The plugins have only been tested with bhoptimer v1.5b (as found [here](https://github.com/shavitush/bhoptimer)).
+
+# Logs
+
+Relevant information will be logged into `addons/sourcemod/logs/oryx-ac.log`.  
+Scroll cheaters will be listed in `addons/sourcemod/logs/oryx-ac-scroll.log`.  
+Strafe hackers will be listed in `addons/sourcemod/logs/oryx-strafe-stats.log`.  
+Chat messages will be printed to admins with `sm_ban` access, or the `oryx_admin` override. Admins will hear a beep sound to grab their attention when needed.
 
 # Useful Definitions
 
