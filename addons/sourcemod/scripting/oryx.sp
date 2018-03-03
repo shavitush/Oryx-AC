@@ -215,8 +215,8 @@ public int Native_WithinFlThresh(Handle plugin, int numParams)
 
 public int Native_PrintToAdmins(Handle plugin, int numParams)
 {
-	char[] sMessage = new char[128];
-	GetNativeString(1, sMessage, 128);
+	char[] sMessage = new char[256];
+	GetNativeString(1, sMessage, 256);
 
 	for(int i = 1; i <= MaxClients; i++)
 	{
@@ -239,8 +239,8 @@ public int Native_PrintToAdmins(Handle plugin, int numParams)
 
 public int Native_PrintToAdminsConsole(Handle plugin, int numParams)
 {
-	char[] sMessage = new char[128];
-	GetNativeString(1, sMessage, 128);
+	char[] sMessage = new char[256];
+	GetNativeString(1, sMessage, 256);
 
 	for(int i = 1; i <= MaxClients; i++)
 	{
