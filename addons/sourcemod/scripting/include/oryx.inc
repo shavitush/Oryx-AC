@@ -93,13 +93,14 @@ native bool Oryx_WithinFlThresh(float f1, float f2, float frac);
  * A tiny function to veify if the player fits gameplay.
  *
  * @param client				Client entity index.
+ * @param watrer				Check for water level?
  * @return 						True if the test passed.
  */
-stock bool IsLegalMoveType(int client)
+stock bool IsLegalMoveType(int client, bool water = true)
 {
 	MoveType iMoveType = GetEntityMoveType(client);
 
-	return GetEntProp(client, Prop_Data, "m_nWaterLevel") < 2 &&
+	return (!water || GetEntProp(client, Prop_Data, "m_nWaterLevel") < 2) &&
 		(GetEntityFlags(client) & FL_ATCONTROLS) == 0 &&
 		(iMoveType == MOVETYPE_WALK || iMoveType == MOVETYPE_ISOMETRIC || iMoveType == MOVETYPE_LADDER);
 }

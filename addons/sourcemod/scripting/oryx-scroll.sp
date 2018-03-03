@@ -368,7 +368,7 @@ Action SetupMove(int client, int buttons)
 	float fSpeed = (SquareRoot(Pow(fAbsVelocity[0], 2.0) + Pow(fAbsVelocity[1], 2.0)));
 
 	// Player isn't really playing but is just trying to make the anticheat go nuts.
-	if(fSpeed < 250.0 || GetEntityMoveType(client) != MOVETYPE_WALK)
+	if(fSpeed < 250.0 || !IsLegalMoveType(client, false))
 	{
 		ResetStatsArray(client);
 
@@ -514,7 +514,6 @@ int Abs(int num)
 
 void AnalyzeStats(int client)
 {
-	// TODO: analyze
 	float fPerfs = GetPerfectJumps(client);
 
 	// "Pattern analysis"
