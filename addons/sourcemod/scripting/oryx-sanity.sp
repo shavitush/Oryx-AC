@@ -199,7 +199,7 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 
 	// Only pass if mouse movement isn't being tampered by +left/right.
 	// TODO: Don't allow cl_yawspeed 0?
-	if(IsLegalMoveType(client) && mousedx != 0 && ((iLR != IN_LEFT && iLR != IN_RIGHT) || iLR == (IN_LEFT | IN_RIGHT) || iLR == 0))
+	if(IsLegalMoveType(client) && mousedx != 0 && (iLR == (IN_LEFT | IN_RIGHT) || iLR == 0))
 	{
 		bool bUnsure = false;
 		float fDeltaAngle = yaw - gF_PreviousAngle[client];
@@ -229,12 +229,12 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 
 		// Idea from NoCheatZ-4.
 		// Compare the signbit of mousedx/yaw delta.
-		if(FloatAbs(fDeltaAngle) > 0.05 && std__signbit(mousedx) == std__signbit(fDeltaAngle))
+		else if(FloatAbs(fDeltaAngle) > 0.05 && std__signbit(mousedx) == std__signbit(fDeltaAngle))
 		{
 			bBadInput = true;
 		}
 
-		else if(!bUnsure)
+		else if(bUnsure)
 		{
 			bBadInput = false;
 		}
