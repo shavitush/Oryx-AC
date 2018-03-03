@@ -18,6 +18,7 @@
 
 #include <sourcemod>
 #include <oryx>
+#include <dhooks>
 
 #if defined bhoptimer
 #undef REQUIRE_PLUGIN
@@ -52,6 +53,7 @@ bool gB_KeyChanged[MAXPLAYERS+1];
 bool gB_DirectionChanged[MAXPLAYERS+1];
 bool gB_EnoughBASHData[MAXPLAYERS+1];
 int gI_BASHTriggerCountdown[MAXPLAYERS+1];
+int gI_LastTeleportTick[MAXPLAYERS+1];
 
 float gF_PreviousOptimizedAngle[MAXPLAYERS+1];
 float gF_PreviousAngle[MAXPLAYERS+1];
@@ -67,6 +69,7 @@ bool gB_RightThisJump[MAXPLAYERS+1];
 int gI_BASHCheckIndex = 1;
 
 bool gB_Shavit = false;
+Handle gH_Teleport = null;
 
 public Plugin myinfo = 
 {
@@ -86,6 +89,18 @@ public void OnPluginStart()
 	gB_Shavit = LibraryExists("shavit");
 	
 	BuildPath(Path_SM, gS_LogPath, PLATFORM_MAX_PATH, "logs/oryx-strafe-stats.log");
+
+	if(LibraryExists("dhooks"))
+	{
+		OnLibraryAdded("dhooks");
+	}
+}
+
+public MRESReturn DHook_Teleport(int pThis, Handle hReturn)
+{
+	gI_LastTeleportTick[pThis] = gI_AbsTicks[pThis];
+
+	return MRES_Ignored;
 }
 
 public void OnClientPutInServer(int client)
@@ -100,10 +115,17 @@ public void OnClientPutInServer(int client)
 	gB_EnoughBASHData[client] = false;
 	gI_BASHTriggerCountdown[client] = 0;
 	gI_StrafeHistoryIndex[client] = 0;
+	gI_AbsTicks[client] = 0;
+	gI_LastTeleportTick[client] = 0;
 
 	for(int i = 0; i < SAMPLE_SIZE; i++)
 	{
 		gI_StrafeHistory[client][i] = 0;
+	}
+
+	if(gH_Teleport != null)
+	{
+		DHookEntity(gH_Teleport, true, client);
 	}
 }
 
@@ -113,6 +135,45 @@ public void OnLibraryAdded(const char[] name)
 	{
 		gB_Shavit = true;
 	}
+
+	else if(StrEqual(name, "dhooks"))
+	{
+		Handle hGameData = LoadGameConfigFile("sdktools.games");
+
+		if(hGameData != null)
+		{
+			int iOffset = GameConfGetOffset(hGameData, "Teleport");
+
+			if(iOffset != -1)
+			{
+				gH_Teleport = DHookCreate(iOffset, HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity, DHook_Teleport);
+
+				DHookAddParam(gH_Teleport, HookParamType_VectorPtr);
+				DHookAddParam(gH_Teleport, HookParamType_ObjectPtr);
+				DHookAddParam(gH_Teleport, HookParamType_VectorPtr);
+
+				if(GetEngineVersion() == Engine_CSGO)
+				{
+					DHookAddParam(gH_Teleport, HookParamType_Bool);
+				}
+
+				for(int i = 1; i <= MaxClients; i++)
+				{
+					if(IsClientInGame(i))
+					{
+						OnClientPutInServer(i);
+					}
+				}
+			}
+
+			else
+			{
+				SetFailState("Couldn't get the offset for \"Teleport\" - make sure your SDKTools gamedata is updated!");
+			}
+		}
+
+		delete hGameData;
+	}
 }
 
 public void OnLibraryRemoved(const char[] name)
@@ -120,6 +181,11 @@ public void OnLibraryRemoved(const char[] name)
 	if(StrEqual(name, "shavit"))
 	{
 		gB_Shavit = false;
+	}
+
+	else if(StrEqual(name, "dhooks"))
+	{
+		gH_Teleport = null;
 	}
 }
 
@@ -144,15 +210,15 @@ public Action Command_PrintStrafeStats(int client, int args)
 
 	if(gB_EnoughBASHData[target])
 	{
-		char[] sStrafeStats = new char[160];
-		FormatStrafeStats(target, sStrafeStats, 160);
+		char[] sStrafeStats = new char[256];
+		FormatStrafeStats(target, sStrafeStats, 256);
 
 		ReplyToCommand(client, "%s", sStrafeStats);
 	}
 
 	else
 	{
-		PrintToChat(client, "Player does not have sufficient strafe data yet!");
+		ReplyToCommand(client, "Player does not have sufficient strafe data yet!");
 	}
 
 	return Plugin_Handled;
@@ -167,12 +233,12 @@ void FormatStrafeStats(int target, char[] buffer, int maxlength)
 		strcopy(sAuth, 32, "ERR_GETTING_ID");
 	}
 
-	for(int i = SAMPLE_SIZE - 1; i > 0; i++)
+	FormatEx(buffer, maxlength, "Strafe stats for %N (%s): {", target, sAuth);
+
+	for(int i = SAMPLE_SIZE - 1; i >= 0; i--)
 	{
 		Format(buffer, maxlength, "%s %d,", buffer, gI_StrafeHistory[target][i]);
 	}
-	
-	FormatEx(buffer, maxlength, "Strafe stats for %N (%s): {", target, sAuth);
 
 	// Beautify the text output so that the stats are separated inside the curly braces, without irrelevant commas.
 	int iPos = strlen(buffer) - 1;
@@ -211,23 +277,29 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 
 Action SetupMove(int client, int &buttons, float angles[3])
 {
-	if(!IsPlayerAlive(client) || IsFakeClient(client))
+	if(!IsPlayerAlive(client) || IsFakeClient(client) || !IsLegalMoveType(client))
 	{
 		return Plugin_Continue;
 	}
 	
 	gI_AbsTicks[client]++;
 
-	float fDeltaAngle = angles[1] - gF_PreviousAngle[client];
-
-	if(fDeltaAngle > 180)
+	// 60 ticks delay after teleports before we start testing again.
+	if(gI_AbsTicks[client] - gI_LastTeleportTick[client] < (SAMPLE_SIZE * 2))
 	{
-		fDeltaAngle -= 360;
+		return Plugin_Continue;
 	}
 
-	else if(fDeltaAngle < -180)
+	float fDeltaAngle = angles[1] - gF_PreviousAngle[client];
+
+	if(fDeltaAngle > 180.0)
 	{
-		fDeltaAngle += 360;
+		fDeltaAngle -= 360.0;
+	}
+
+	else if(fDeltaAngle < -180.0)
+	{
+		fDeltaAngle += 360.0;
 	}
 
 	float fDeltaAngleAbs = FloatAbs(fDeltaAngle);
@@ -435,27 +507,27 @@ public void OnGameFrame()
 
 void CheckBASH(int client)
 {
-	int accum = 0;
-	int zct = 0;
+	int iTickDifference = 0;
+	int iZeroes = 0;
 
 	for(int i = 0; i < SAMPLE_SIZE; i++)
 	{
-		accum += ((gI_StrafeHistory[client][i] >= 0)? (gI_StrafeHistory[client][i]):(gI_StrafeHistory[client][i] * -1));
+		iTickDifference += ((gI_StrafeHistory[client][i] >= 0)? (gI_StrafeHistory[client][i]):(gI_StrafeHistory[client][i] * -1));
 
 		if(gI_StrafeHistory[client][i] == 0)
 		{
-			zct++;
+			iZeroes++;
 		}
 	}
 	
 	// Average tick difference.
-	if(accum < 9)
+	if(iTickDifference < 9)
 	{
 		Oryx_Trigger(client, TRIGGER_HIGH, DESC6);
 		gI_BASHTriggerCountdown[client] = 35;
 	}
 
-	else if(accum < 15)
+	else if(iTickDifference < 15)
 	{
 		Oryx_Trigger(client, TRIGGER_LOW, DESC6);
 		gI_BASHTriggerCountdown[client] = 35;
@@ -464,8 +536,8 @@ void CheckBASH(int client)
 	// Don't trigger twice in one tick.
 	if(gI_BASHTriggerCountdown[client] > 0)
 	{
-		char[] sStrafeStats = new char[160];
-		FormatStrafeStats(client, sStrafeStats, 160);
+		char[] sStrafeStats = new char[256];
+		FormatStrafeStats(client, sStrafeStats, 256);
 
 		Oryx_PrintToAdminsConsole(sStrafeStats);
 		LogToFileEx(gS_LogPath, "%s", sStrafeStats);
@@ -474,19 +546,19 @@ void CheckBASH(int client)
 	}
 	
 	// Too many zeroes?
-	if(zct > 25)
+	if(iZeroes > 25)
 	{
 		Oryx_Trigger(client, TRIGGER_HIGH, DESC7);
 		gI_BASHTriggerCountdown[client] = 35;
 	}
 
-	else if(zct > 22)
+	else if(iZeroes > 22)
 	{
 		Oryx_Trigger(client, TRIGGER_MEDIUM, DESC7);
 		gI_BASHTriggerCountdown[client] = 35;
 	}
 
-	else if(zct > 18)
+	else if(iZeroes > 18)
 	{
 		Oryx_Trigger(client, TRIGGER_LOW, DESC7);
 		gI_BASHTriggerCountdown[client] = 35;
@@ -494,8 +566,8 @@ void CheckBASH(int client)
 	
 	if(gI_BASHTriggerCountdown[client] > 0)
 	{
-		char[] sStrafeStats = new char[160];
-		FormatStrafeStats(client, sStrafeStats, 160);
+		char[] sStrafeStats = new char[256];
+		FormatStrafeStats(client, sStrafeStats, 256);
 
 		Oryx_PrintToAdminsConsole(sStrafeStats);
 		LogToFileEx(gS_LogPath, "%s", sStrafeStats);
