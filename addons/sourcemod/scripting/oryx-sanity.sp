@@ -34,7 +34,7 @@
 #define DESC4 "Raw input discrepancy"
 
 // Amount of ticks in a row where raw input can have discrepancies before acting.
-#define SAMPLE_SIZE 20
+#define SAMPLE_SIZE 60
 
 EngineVersion gEV_Type = Engine_Unknown;
 
