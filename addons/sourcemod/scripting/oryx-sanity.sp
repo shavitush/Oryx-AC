@@ -175,6 +175,12 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style, any stylesettings[STYLESETTINGS_SIZE], int mouse[2])
 {
+	// Don't do sanity checks on players that aren't running, to reduce false positive risks.
+	if(status != Timer_Running)
+	{
+		return Plugin_Continue;
+	}
+
 	// Ignore whitelisted styles.
 	char[] sSpecial = new char[32];
 	Shavit_GetStyleStrings(style, sSpecialString, sSpecial, 32);
