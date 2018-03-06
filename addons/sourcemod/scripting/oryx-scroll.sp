@@ -226,17 +226,17 @@ public Action Command_PrintScrollStats(int client, int args)
 		return Plugin_Handled;
 	}
 
-	char[] sScrollStats = new char[256];
-	GetScrollStatsFormatted(client, sScrollStats, 256);
+	char[] sScrollStats = new char[300];
+	GetScrollStatsFormatted(client, sScrollStats, 300);
 
-	ReplyToCommand(client, "%s", sScrollStats);
+	ReplyToCommand(client, "Scroll stats for %N: %s", target, sScrollStats);
 
 	return Plugin_Handled;
 }
 
 void GetScrollStatsFormatted(int client, char[] buffer, int maxlength)
 {
-	FormatEx(buffer, maxlength, "Scroll stats for %N (%.02f%% perfs, %d sampled jumps): {", client, GetPerfectJumps(client), GetSampledJumps(client));
+	FormatEx(buffer, maxlength, "%d%% perfs, %d sampled jumps: {", client, GetPerfectJumps(client), GetSampledJumps(client));
 
 	int iSize = gA_JumpStats[client].Length;
 	int iEnd = (iSize >= SAMPLE_SIZE)? (iSize - SAMPLE_SIZE):0;
@@ -265,7 +265,7 @@ int GetSampledJumps(int client)
 	return (iSize - iEnd);
 }
 
-float GetPerfectJumps(int client)
+int GetPerfectJumps(int client)
 {
 	int iPerfs = 0;
 	int iSize = gA_JumpStats[client].Length;
@@ -280,12 +280,12 @@ float GetPerfectJumps(int client)
 		}
 	}
 
-	if(iPerfs == 0 || iTotalJumps == 0) // Don't throw a divide-by-zero error.
+	if(iTotalJumps == 0) // Don't throw a divide-by-zero error.
 	{
-		return 0.0;
+		return 0;
 	}
 
-	return (float(iPerfs) / iTotalJumps) * 100.0;
+	return (iPerfs / iTotalJumps) * 100;
 }
 
 public Action OnPlayerRunCmd(int client, int &buttons)
@@ -514,7 +514,7 @@ int Abs(int num)
 
 void AnalyzeStats(int client)
 {
-	float fPerfs = GetPerfectJumps(client);
+	int iPerfs = GetPerfectJumps(client);
 
 	// "Pattern analysis"
 	int iVeryHighNumber = 0;
@@ -578,65 +578,65 @@ void AnalyzeStats(int client)
 
 	bool bTriggered = true;
 
-	char[] sScrollStats = new char[256];
-	GetScrollStatsFormatted(client, sScrollStats, 256);
+	char[] sScrollStats = new char[300];
+	GetScrollStatsFormatted(client, sScrollStats, 300);
 
 	// Ugly code below, I know.
-	if(fPerfs >= 91.0)
+	if(iPerfs >= 91)
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC1 ... "): %s", client, sScrollStats);
 		Oryx_Trigger(client, TRIGGER_DEFINITIVE, DESC1);
 	}
 
-	else if(fPerfs >= 87.0 && (iSameAsNext >= 13 || iCloseToNext >= 18))
+	else if(iPerfs >= 87 && (iSameAsNext >= 13 || iCloseToNext >= 18))
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC2 ... "): %s", client, sScrollStats);
 		Oryx_Trigger(client, TRIGGER_DEFINITIVE, DESC2);
 	}
 
-	else if(fPerfs >= 85.0 && iSameAsNext >= 13)
+	else if(iPerfs >= 85 && iSameAsNext >= 13)
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC3 ... "): %s", client, sScrollStats);
 		Oryx_Trigger(client, TRIGGER_DEFINITIVE, DESC3);
 	}
 
-	else if(fPerfs >= 80.0 && iSameAsNext >= 15)
+	else if(iPerfs >= 80 && iSameAsNext >= 15)
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC4 ... "): %s", client, sScrollStats);
 		Oryx_Trigger(client, TRIGGER_HIGH, DESC4);
 	}
 
-	else if(fPerfs >= 75.0 && iVeryHighNumber >= 4 && iSameAsNext >= 3 && iCloseToNext >= 10)
+	else if(iPerfs >= 75 && iVeryHighNumber >= 4 && iSameAsNext >= 3 && iCloseToNext >= 10)
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC5 ... "): %s", client, sScrollStats);
 		Oryx_Trigger(client, TRIGGER_HIGH, DESC5);
 	}
 
-	else if(fPerfs >= 85.0 && iCloseToNext >= 16)
+	else if(iPerfs >= 85 && iCloseToNext >= 16)
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC6 ... "): %s", client, sScrollStats);
 		Oryx_Trigger(client, TRIGGER_HIGH, DESC6);
 	}
 
-	else if(fPerfs >= 40.0 && iLowBefores >= 40)
+	else if(iPerfs >= 40 && iLowBefores >= 45)
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC7 ... ") (%d): %s", client, iLowBefores, sScrollStats);
 		Oryx_Trigger(client, TRIGGER_HIGH_NOKICK, DESC7);
 	}
 
-	else if(fPerfs >= 55.0 && iSameBeforeAfter >= 25)
+	else if(iPerfs >= 55 && iSameBeforeAfter >= 25)
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC8 ... ") (bf %d | af %d | bfaf %d): %s", client, iLowBefores, iLowAfters, iSameBeforeAfter, sScrollStats);
 		Oryx_Trigger(client, TRIGGER_HIGH_NOKICK, DESC8);
 	}
 
-	else if(fPerfs >= 40.0 && iLowAfters >= 40)
+	else if(iPerfs >= 40 && iLowAfters >= 45)
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC9 ... ") (%d): %s", client, iLowAfters, sScrollStats);
 		Oryx_Trigger(client, TRIGGER_HIGH_NOKICK, DESC9);
 	}
 
-	else if(iVeryHighNumber >= 15 && (iCloseToNext >= 13 || fPerfs >= 80.0))
+	else if(iVeryHighNumber >= 15 && (iCloseToNext >= 13 || iPerfs >= 80))
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC10 ... "): %s", client, sScrollStats);
 		Oryx_Trigger(client, TRIGGER_HIGH, DESC10);
