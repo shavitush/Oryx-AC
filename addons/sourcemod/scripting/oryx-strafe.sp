@@ -258,7 +258,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		return Plugin_Continue;
 	}
 
-	return SetupMove(client, buttons, angles);
+	return SetupMove(client, buttons, angles, vel);
 }
 
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style)
@@ -272,10 +272,10 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 		return Plugin_Continue;
 	}
 
-	return SetupMove(client, buttons, angles);
+	return SetupMove(client, buttons, angles, vel);
 }
 
-Action SetupMove(int client, int &buttons, float angles[3])
+Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 {
 	if(!IsPlayerAlive(client) || IsFakeClient(client) || !IsLegalMoveType(client))
 	{
@@ -360,7 +360,6 @@ Action SetupMove(int client, int &buttons, float angles[3])
 			gI_StrafeHistoryIndex[client] = 0;
 		}
 		
-		#if defined bhoptimer
 		// This isn't for BASH.
 		if((buttons & IN_LEFT) > 0)
 		{
@@ -372,15 +371,11 @@ Action SetupMove(int client, int &buttons, float angles[3])
 			gB_RightThisJump[client] = true;
 		}
 
-		if(gB_LeftThisJump[client] && gB_RightThisJump[client] && Shavit_GetTimerStatus(client) == Timer_Running)
+		if(gB_LeftThisJump[client] && gB_RightThisJump[client])
 		{
-			Shavit_StopTimer(client);
-			PrintToChat(client, "Your timer has been stopped for using +left and +right in a single jump.");
-
-			gB_LeftThisJump[client] = false;
-			gB_RightThisJump[client] = false;
+			vel[0] = 0.0;
+			vel[1] = 0.0;
 		}
-		#endif
 	}
 
 	else
@@ -388,11 +383,9 @@ Action SetupMove(int client, int &buttons, float angles[3])
 		gB_KeyChanged[client] = false;
 		gB_DirectionChanged[client] = false;
 		
-		#if defined bhoptimer
 		// This isn't for BASH.
 		gB_LeftThisJump[client] = false;
 		gB_RightThisJump[client] = false;
-		#endif
 	}
 
 	float fAbsVelocity[3];
