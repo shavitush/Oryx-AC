@@ -621,7 +621,7 @@ void AnalyzeStats(int client)
 	else if(iPerfs >= 40 && iLowBefores >= 45)
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC7 ... ") (%d): %s", client, iLowBefores, sScrollStats);
-		Oryx_Trigger(client, TRIGGER_HIGH_NOKICK, DESC7);
+		Oryx_Trigger(client, TRIGGER_MEDIUM, DESC7);
 	}
 
 	else if(iPerfs >= 55 && iSameBeforeAfter >= 25)
@@ -633,7 +633,7 @@ void AnalyzeStats(int client)
 	else if(iPerfs >= 40 && iLowAfters >= 45)
 	{
 		LogToFileEx(gS_LogPath, "%L - (" ... DESC9 ... ") (%d): %s", client, iLowAfters, sScrollStats);
-		Oryx_Trigger(client, TRIGGER_HIGH_NOKICK, DESC9);
+		Oryx_Trigger(client, TRIGGER_LOW, DESC9);
 	}
 
 	else if(iVeryHighNumber >= 15 && (iCloseToNext >= 13 || iPerfs >= 80))
