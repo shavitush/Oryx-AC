@@ -201,15 +201,15 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 	}
 
 	bool bBadInput = false;
+	bool bUnsure = false;
+
 	int iLR = (buttons & (IN_LEFT | IN_RIGHT));
+	float fDeltaAngle = yaw - gF_PreviousAngle[client];
 
 	// Only pass if mouse movement isn't being tampered by +left/right.
 	// TODO: Don't allow cl_yawspeed 0?
 	if(IsLegalMoveType(client) && mousedx != 0 && (iLR == (IN_LEFT | IN_RIGHT) || iLR == 0))
 	{
-		bool bUnsure = false;
-		float fDeltaAngle = yaw - gF_PreviousAngle[client];
-
 		if(fDeltaAngle > 180.0)
 		{
 			fDeltaAngle -= 360.0;
@@ -240,7 +240,7 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 			bBadInput = true;
 		}
 
-		else if(bUnsure)
+		if(bUnsure)
 		{
 			bBadInput = false;
 		}
@@ -252,7 +252,10 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 	{
 		if(++gI_BadInputStreak[client] >= SAMPLE_SIZE)
 		{
-			Oryx_Trigger(client, TRIGGER_HIGH_NOKICK, DESC4);
+			char[] sReason = new char[32];
+			FormatEx(sReason, 32, DESC4 ... "d%.03f x%d u%d", fDeltaAngle, mousedx, bUnsure);
+
+			Oryx_Trigger(client, TRIGGER_MEDIUM, sReason);
 
 			gI_BadInputStreak[client] = 0;
 		}
