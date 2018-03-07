@@ -75,6 +75,14 @@ public void OnPluginStart()
 	{
 		OnLibraryAdded("dhooks");
 	}
+
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		if(IsClientInGame(i))
+		{
+			OnClientPutInServer(i);
+		}
+	}
 }
 
 public MRESReturn DHook_Teleport(int pThis, Handle hReturn)
@@ -123,14 +131,6 @@ public void OnLibraryAdded(const char[] name)
 				if(gEV_Type == Engine_CSGO)
 				{
 					DHookAddParam(gH_Teleport, HookParamType_Bool);
-				}
-
-				for(int i = 1; i <= MaxClients; i++)
-				{
-					if(IsClientInGame(i))
-					{
-						OnClientPutInServer(i);
-					}
 				}
 			}
 

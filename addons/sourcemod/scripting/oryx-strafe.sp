@@ -94,6 +94,14 @@ public void OnPluginStart()
 	{
 		OnLibraryAdded("dhooks");
 	}
+
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		if(IsClientInGame(i))
+		{
+			OnClientPutInServer(i);
+		}
+	}
 }
 
 public MRESReturn DHook_Teleport(int pThis, Handle hReturn)
@@ -155,14 +163,6 @@ public void OnLibraryAdded(const char[] name)
 				if(GetEngineVersion() == Engine_CSGO)
 				{
 					DHookAddParam(gH_Teleport, HookParamType_Bool);
-				}
-
-				for(int i = 1; i <= MaxClients; i++)
-				{
-					if(IsClientInGame(i))
-					{
-						OnClientPutInServer(i);
-					}
 				}
 			}
 
@@ -315,10 +315,19 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 	*/
 	if((GetEntityFlags(client) & FL_ONGROUND) == 0)
 	{
-		if((buttons & (IN_MOVELEFT | IN_MOVERIGHT)) != (IN_MOVELEFT | IN_MOVERIGHT))
+		// WARNING: UGLY CODE.
+		if((buttons & (IN_MOVELEFT | IN_MOVERIGHT)) != (IN_MOVELEFT | IN_MOVERIGHT) ||
+			(buttons & (IN_FORWARD | IN_BACK)) != (IN_FORWARD | IN_BACK))
 		{
-			if(((buttons & IN_MOVELEFT) > 0 && ((gI_PreviousButtons[client] & IN_MOVERIGHT) > 0 && (gI_PreviousButtons[client] & IN_MOVELEFT) > 0) || (gI_PreviousButtons[client] & IN_MOVELEFT) == 0) &&
-				((buttons & IN_MOVERIGHT) > 0 && ((gI_PreviousButtons[client] & IN_MOVERIGHT) > 0 && (gI_PreviousButtons[client] & IN_MOVELEFT) > 0) || (gI_PreviousButtons[client] & IN_MOVERIGHT) == 0))
+			if( // A/D
+				((((buttons & IN_MOVELEFT) > 0 && (gI_PreviousButtons[client] & IN_MOVELEFT) == 0) ||
+				((buttons & IN_MOVERIGHT) > 0 && (gI_PreviousButtons[client] & IN_MOVERIGHT) == 0)) ||
+				((gI_PreviousButtons[client] & IN_MOVERIGHT) > 0 && (gI_PreviousButtons[client] & IN_MOVELEFT) > 0)) ||
+
+				// S/W
+				((((buttons & IN_FORWARD) > 0 && (gI_PreviousButtons[client] & IN_FORWARD) == 0) ||
+				((buttons & IN_BACK) > 0 && (gI_PreviousButtons[client] & IN_BACK) == 0)) ||
+				((gI_PreviousButtons[client] & IN_BACK) > 0 && (gI_PreviousButtons[client] & IN_FORWARD) > 0)))
 			{
 				gB_KeyChanged[client] = true;
 				gI_KeyTransitionTick[client] = gI_AbsTicks[client];
