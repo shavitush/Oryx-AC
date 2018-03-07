@@ -25,6 +25,8 @@
 
 EngineVersion gEV_Type = Engine_Unknown;
 
+Handle gH_Forwards_OnTrigger = null;
+
 char gS_LogPath[PLATFORM_MAX_PATH];
 char gS_BeepSound[PLATFORM_MAX_PATH];
 
@@ -55,6 +57,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 public void OnPluginStart()
 {
+	gH_Forwards_OnTrigger = CreateGlobalForward("Oryx_OnTrigger", ET_Event, Param_Cell, Param_CellByRef, Param_String);
+
 	gEV_Type = GetEngineVersion();
 
 	CreateConVar("oryx_version", ORYX_VERSION, "Plugin version.", (FCVAR_NOTIFY | FCVAR_DONTRECORD));
@@ -151,6 +155,18 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 
 	GetNativeString(3, sCheatDescription, 32);
 
+	Action result = Plugin_Continue;
+	Call_StartForward(gH_Forwards_OnTrigger);
+	Call_PushCell(client);
+	Call_PushCellRef(level);
+	Call_PushStringEx(sCheatDescription, 32, SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
+	Call_Finish(result);
+
+	if(result == Plugin_Stop)
+	{
+		return view_as<int>(Plugin_Stop);
+	}
+
 	if(level == TRIGGER_LOW)
 	{
 		strcopy(sLevel, 16, "LOW");
@@ -164,7 +180,11 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	else if(level == TRIGGER_HIGH)
 	{
 		strcopy(sLevel, 16, "HIGH");
-		KickClient(client, "[ORYX] %s", sCheatDescription);
+
+		if(result != Plugin_Handled)
+		{
+			KickClient(client, "[ORYX] %s", sCheatDescription);
+		}
 	}
 
 	else if(level == TRIGGER_HIGH_NOKICK)
@@ -175,7 +195,11 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	else if(level == TRIGGER_DEFINITIVE)
 	{
 		strcopy(sLevel, 16, "DEFINITIVE");
-		KickClient(client, "[ORYX] %s", sCheatDescription);
+
+		if(result != Plugin_Handled)
+		{
+			KickClient(client, "[ORYX] %s", sCheatDescription);
+		}
 	}
 
 	else if(level == TRIGGER_TEST)
@@ -191,7 +215,7 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 			}
 		}
 
-		return;
+		return view_as<int>(result);
 	}
 
 	char[] sAuth = new char[32];
@@ -202,6 +226,8 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	Oryx_PrintToAdmins(sBuffer);
 	
 	LogToFileEx(gS_LogPath, "%L - Cheat: %s | Level: %s", client, sCheatDescription, sLevel);
+
+	return view_as<int>(result);
 }
 
 public int Native_WithinFlThresh(Handle plugin, int numParams)

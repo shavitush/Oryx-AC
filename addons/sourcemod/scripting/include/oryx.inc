@@ -54,14 +54,24 @@ enum
 #define bhoptimer
 
 /**
- * Call to activate oryx's trigger procedure (logging, kicking, admin notifications, etc..).
+ * Called when Oryx gets triggered on a client.
+ *
+ * @param client				Client entity index.
+ * @param level					Level of detection as defined in the above enum.
+ * @param cheat					Short description or name of the cheat being detected. 32 cells char array.
+ * @return						Plugin_Continue to do nothing. Plugin_Changed to modify values. Plugin_Handled to abort kicks. Plugin_Stop to completely ignore the trigger.
+ */
+forward Action Oryx_OnTrigger(int client, int &level, char[] cheat);
+
+/**
+ * Call to activate Oryx's trigger procedure (logging, kicking, admin notifications, etc..).
  *
  * @param client				Client entity index.
  * @param level					Level of detection as defined in the above enum.
  * @param cheat					Short description or name of the cheat being detected.
- * @noreturn
+ * @return						Return value of the Oryx_OnTrigger forward.
  */
-native void Oryx_Trigger(int client, int level, char[] cheat);
+native Action Oryx_Trigger(int client, int level, const char[] cheat);
 
 /**
  * Prints a message to admins' chat.
