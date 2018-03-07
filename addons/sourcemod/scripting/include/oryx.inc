@@ -21,7 +21,7 @@
 #endif
 #define _oryx_included
 
-#define ORYX_VERSION "1.1"
+#define ORYX_VERSION "1.2"
 
 /**
 * List of current detection descriptions:
