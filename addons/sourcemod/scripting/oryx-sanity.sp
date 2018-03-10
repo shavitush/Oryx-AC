@@ -45,6 +45,8 @@ int gI_BadInputStreak[MAXPLAYERS+1];
 bool gB_Shavit = false;
 Handle gH_Teleport = null;
 
+bool gB_TriggeredRawInput[MAXPLAYERS+1];
+
 public Plugin myinfo = 
 {
 	name = "ORYX sanity module",
@@ -98,6 +100,7 @@ public MRESReturn DHook_Teleport(int pThis, Handle hReturn)
 public void OnClientPutInServer(int client)
 {
 	gI_BadInputStreak[client] = 0;
+	gB_TriggeredRawInput[client] = false;
 
 	if(gH_Teleport != null)
 	{
@@ -208,7 +211,7 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 
 	// Only pass if mouse movement isn't being tampered by +left/right.
 	// TODO: Don't allow cl_yawspeed 0?
-	if(IsLegalMoveType(client) && mousedx != 0 && (iLR == (IN_LEFT | IN_RIGHT) || iLR == 0))
+	if(!gB_TriggeredRawInput[client] && IsLegalMoveType(client) && mousedx != 0 && (iLR == (IN_LEFT | IN_RIGHT) || iLR == 0))
 	{
 		if(fDeltaAngle > 180.0)
 		{
@@ -258,6 +261,7 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 			Oryx_Trigger(client, TRIGGER_MEDIUM, sReason);
 
 			gI_BadInputStreak[client] = 0;
+			gB_TriggeredRawInput[client] = true;
 		}
 	}
 
