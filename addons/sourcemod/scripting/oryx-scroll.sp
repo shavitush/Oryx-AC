@@ -236,7 +236,7 @@ public Action Command_PrintScrollStats(int client, int args)
 
 void GetScrollStatsFormatted(int client, char[] buffer, int maxlength)
 {
-	FormatEx(buffer, maxlength, "%d%% perfs, %d sampled jumps: {", client, GetPerfectJumps(client), GetSampledJumps(client));
+	FormatEx(buffer, maxlength, "%d%% perfs, %d sampled jumps: {", GetPerfectJumps(client), GetSampledJumps(client));
 
 	int iSize = gA_JumpStats[client].Length;
 	int iEnd = (iSize >= SAMPLE_SIZE)? (iSize - SAMPLE_SIZE):0;
@@ -259,6 +259,11 @@ void GetScrollStatsFormatted(int client, char[] buffer, int maxlength)
 
 int GetSampledJumps(int client)
 {
+	if(gA_JumpStats[client] == null)
+	{
+		return 0;
+	}
+
 	int iSize = gA_JumpStats[client].Length;
 	int iEnd = (iSize >= SAMPLE_SIZE)? (iSize - SAMPLE_SIZE):0;
 
@@ -285,7 +290,7 @@ int GetPerfectJumps(int client)
 		return 0;
 	}
 
-	return (iPerfs / iTotalJumps) * 100;
+	return RoundToZero((float(iPerfs) / iTotalJumps) * 100);
 }
 
 public Action OnPlayerRunCmd(int client, int &buttons)
