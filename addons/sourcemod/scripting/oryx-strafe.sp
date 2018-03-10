@@ -47,13 +47,12 @@ int gI_SteadyAngleStreak[MAXPLAYERS+1];
 int gI_SteadyAngleStreakPre[MAXPLAYERS+1];
 int gI_KeyTransitionTick[MAXPLAYERS+1];
 int gI_AngleTransitionTick[MAXPLAYERS+1];
-int gI_StrafeHistory[MAXPLAYERS+1][SAMPLE_SIZE];
-int gI_StrafeHistoryIndex[MAXPLAYERS+1];
 bool gB_KeyChanged[MAXPLAYERS+1];
 bool gB_DirectionChanged[MAXPLAYERS+1];
-bool gB_EnoughBASHData[MAXPLAYERS+1];
 int gI_BASHTriggerCountdown[MAXPLAYERS+1];
 int gI_LastTeleportTick[MAXPLAYERS+1];
+int gI_CurrentStrafe[MAXPLAYERS+1];
+ArrayList gA_StrafeHistory[MAXPLAYERS+1];
 
 float gF_PreviousOptimizedAngle[MAXPLAYERS+1];
 float gF_PreviousAngle[MAXPLAYERS+1];
@@ -65,8 +64,6 @@ int gI_PreviousButtons[MAXPLAYERS+1];
 
 bool gB_LeftThisJump[MAXPLAYERS+1];
 bool gB_RightThisJump[MAXPLAYERS+1];
-
-int gI_BASHCheckIndex = 1;
 
 bool gB_Shavit = false;
 Handle gH_Teleport = null;
@@ -120,21 +117,21 @@ public void OnClientPutInServer(int client)
 	gI_AngleTransitionTick[client] = 0;
 	gB_KeyChanged[client] = false;
 	gB_DirectionChanged[client] = false;
-	gB_EnoughBASHData[client] = false;
 	gI_BASHTriggerCountdown[client] = 0;
-	gI_StrafeHistoryIndex[client] = 0;
 	gI_AbsTicks[client] = 0;
 	gI_LastTeleportTick[client] = 0;
-
-	for(int i = 0; i < SAMPLE_SIZE; i++)
-	{
-		gI_StrafeHistory[client][i] = 0;
-	}
+	gI_CurrentStrafe[client] = 0;
+	gA_StrafeHistory[client] = new ArrayList();
 
 	if(gH_Teleport != null)
 	{
 		DHookEntity(gH_Teleport, true, client);
 	}
+}
+
+public void OnClientDisconnect(int client)
+{
+	delete gA_StrafeHistory[client];
 }
 
 public void OnLibraryAdded(const char[] name)
@@ -189,6 +186,24 @@ public void OnLibraryRemoved(const char[] name)
 	}
 }
 
+bool EnoughBASHData(int client)
+{
+	return gA_StrafeHistory[client].Length >= SAMPLE_SIZE;
+}
+
+int GetSampledStrafes(int client)
+{
+	if(gA_StrafeHistory[client] == null)
+	{
+		return 0;
+	}
+
+	int iSize = gA_StrafeHistory[client].Length;
+	int iEnd = (iSize >= SAMPLE_SIZE)? (iSize - SAMPLE_SIZE):0;
+
+	return (iSize - iEnd);
+}
+
 public Action Command_PrintStrafeStats(int client, int args)
 {
 	if(args < 1)
@@ -208,36 +223,31 @@ public Action Command_PrintStrafeStats(int client, int args)
 		return Plugin_Handled;
 	}
 
-	if(gB_EnoughBASHData[target])
+	if(GetSampledStrafes(target) == 0)
 	{
-		char[] sStrafeStats = new char[256];
-		FormatStrafeStats(target, sStrafeStats, 256);
+		ReplyToCommand(client, "\x03%N\x01 does not have recorded strafe stats.", target);
 
-		ReplyToCommand(client, "%s", sStrafeStats);
+		return Plugin_Handled;
 	}
 
-	else
-	{
-		ReplyToCommand(client, "Player does not have sufficient strafe data yet!");
-	}
+	char[] sStrafeStats = new char[256];
+	FormatStrafeStats(target, sStrafeStats, 256);
+
+	ReplyToCommand(client, "Strafe stats for %N: %s", target, sStrafeStats);
 
 	return Plugin_Handled;
 }
 
-void FormatStrafeStats(int target, char[] buffer, int maxlength)
+void FormatStrafeStats(int client, char[] buffer, int maxlength)
 {
-	char[] sAuth = new char[32];
+	FormatEx(buffer, maxlength, "%d sampled strafes: {", GetSampledStrafes(client));
 
-	if(!GetClientAuthId(target, AuthId_Steam3, sAuth, 32))
+	int iSize = gA_StrafeHistory[client].Length;
+	int iEnd = (iSize >= SAMPLE_SIZE)? (iSize - SAMPLE_SIZE):0;
+
+	for(int i = iSize - 1; i >= iEnd; i--)
 	{
-		strcopy(sAuth, 32, "ERR_GETTING_ID");
-	}
-
-	FormatEx(buffer, maxlength, "Strafe stats for %N (%s): {", target, sAuth);
-
-	for(int i = SAMPLE_SIZE - 1; i >= 0; i--)
-	{
-		Format(buffer, maxlength, "%s %d,", buffer, gI_StrafeHistory[target][i]);
+		Format(buffer, maxlength, "%s %d,", buffer, gA_StrafeHistory[client].Get(i));
 	}
 
 	// Beautify the text output so that the stats are separated inside the curly braces, without irrelevant commas.
@@ -277,13 +287,19 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 
 Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 {
-	if(!IsPlayerAlive(client) || IsFakeClient(client) || !IsLegalMoveType(client))
+	if(!IsPlayerAlive(client) || IsFakeClient(client))
 	{
 		return Plugin_Continue;
 	}
 
 	float fDeltaAngle = angles[1] - gF_PreviousAngle[client];
 	gF_PreviousAngle[client] = angles[1];
+
+	// This is here so we have a correct previous anglew for the next tick with a legal movetype.
+	if(!IsLegalMoveType(client))
+	{
+		return Plugin_Continue;
+	}
 
 	// 60 ticks delay after teleports before we start testing again.
 	if(++gI_AbsTicks[client] - gI_LastTeleportTick[client] < (SAMPLE_SIZE * 2))
@@ -335,7 +351,11 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 			}
 		}
 
-		if(fDeltaAngleAbs != 0.0 && ((fDeltaAngle < 0.0 && gF_PrevDeltaAngle2[client] > 0.0) || (fDeltaAngle > 0.0 && gF_PrevDeltaAngle2[client] < 0.0) || gF_PreviousDeltaAngle[client] == 0.0) && !gB_DirectionChanged[client])
+		// TODO: this is possibly wrong
+		if(fDeltaAngleAbs != 0.0 &&
+			((fDeltaAngle < 0.0 && gF_PrevDeltaAngle2[client] > 0.0) ||
+				(fDeltaAngle > 0.0 && gF_PrevDeltaAngle2[client] < 0.0) ||
+				gF_PreviousDeltaAngle[client] == 0.0) && !gB_DirectionChanged[client])
 		{
 			gB_DirectionChanged[client] = true;
 			gI_AngleTransitionTick[client] = gI_AbsTicks[client];
@@ -350,24 +370,19 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 			
 			if(iTick > -26 && iTick < 26)
 			{
-				gI_StrafeHistory[client][gI_StrafeHistoryIndex[client]] = iTick;
-				gI_StrafeHistoryIndex[client]++;
+				gA_StrafeHistory[client].Push(iTick);
+				gI_CurrentStrafe[client]++;
+
+				if((gI_CurrentStrafe[client] % SAMPLE_SIZE) == 0)
+				{
+					AnalyzeBASHStats(client);
+				}
 			}
 
 			if(gI_BASHTriggerCountdown[client] > 0)
 			{
 				gI_BASHTriggerCountdown[client]--;
 			}
-		}
-		
-		if(!gB_EnoughBASHData[client] && gI_StrafeHistoryIndex[client] == SAMPLE_SIZE)
-		{
-			gB_EnoughBASHData[client] = true;
-		}
-
-		if(gI_StrafeHistoryIndex[client] == SAMPLE_SIZE)
-		{
-			gI_StrafeHistoryIndex[client] = 0;
 		}
 		
 		// This isn't for BASH.
@@ -441,6 +456,8 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 				if(gI_SteadyAngleStreak[client] == 50)
 				{
 					Oryx_Trigger(client, TRIGGER_HIGH, DESC2);
+
+					gI_SteadyAngleStreak[client] = 0;
 				}
 			}
 		}
@@ -487,43 +504,22 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 	return Plugin_Continue;
 }
 
-// Note by shavit: what the fuck is this supposed to be even..
-public void OnGameFrame()
+int Abs(int num)
 {
-	if(gI_BASHCheckIndex > MaxClients)
-	{
-		gI_BASHCheckIndex = 1;
-	}
-
-	if(gI_BASHTriggerCountdown[gI_BASHCheckIndex] > 0)
-	{
-		gI_BASHCheckIndex++;
-
-		return;
-	}
-
-	if(IsClientInGame(gI_BASHCheckIndex) && IsPlayerAlive(gI_BASHCheckIndex))
-	{
-		// Use their ground state as a makeshift afk determinant 
-		if(gB_EnoughBASHData[gI_BASHCheckIndex] && (GetEntityFlags(gI_BASHCheckIndex) & FL_ONGROUND) == 0)
-		{
-			CheckBASH(gI_BASHCheckIndex);
-		}
-	}
-		
-	gI_BASHCheckIndex++;
+	return (num > 0)? num:-num;
 }
 
-void CheckBASH(int client)
+void AnalyzeBASHStats(int client)
 {
 	int iTickDifference = 0;
 	int iZeroes = 0;
 
-	for(int i = 0; i < SAMPLE_SIZE; i++)
+	for(int i = (gI_CurrentStrafe[client] - SAMPLE_SIZE); i < gI_CurrentStrafe[client] - 1; i++)
 	{
-		iTickDifference += ((gI_StrafeHistory[client][i] >= 0)? (gI_StrafeHistory[client][i]):(gI_StrafeHistory[client][i] * -1));
+		int iTick = Abs(gA_StrafeHistory[client].Get(i));
+		iTickDifference += iTick;
 
-		if(gI_StrafeHistory[client][i] == 0)
+		if(iTick == 0)
 		{
 			iZeroes++;
 		}
