@@ -45,7 +45,7 @@ public Plugin myinfo =
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
 	CreateNative("Oryx_Trigger", Native_OryxTrigger);
-	CreateNative("Oryx_WithinFlThresh", Native_WithinFlThresh);
+	CreateNative("Oryx_WithinThreshold", Native_WithinThreshold);
 	CreateNative("Oryx_PrintToAdmins", Native_PrintToAdmins);
 	CreateNative("Oryx_PrintToAdminsConsole", Native_PrintToAdminsConsole);
 
@@ -230,13 +230,13 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	return view_as<int>(result);
 }
 
-public int Native_WithinFlThresh(Handle plugin, int numParams)
+public int Native_WithinThreshold(Handle plugin, int numParams)
 {
-	float f2 = GetNativeCell(2);
-	float t = f2 / GetNativeCell(3);
 	float f1 = GetNativeCell(1);
+	float f2 = GetNativeCell(2);
+	float threshold = GetNativeCell(3);
 
-	return (f1 > (f2 - t) && f1 < (f2 + t));
+	return view_as<int>(FloatAbs(f1 - f2) <= threshold);
 }
 
 public int Native_PrintToAdmins(Handle plugin, int numParams)

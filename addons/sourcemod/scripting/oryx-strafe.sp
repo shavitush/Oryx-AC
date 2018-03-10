@@ -281,16 +281,15 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 	{
 		return Plugin_Continue;
 	}
-	
-	gI_AbsTicks[client]++;
+
+	float fDeltaAngle = angles[1] - gF_PreviousAngle[client];
+	gF_PreviousAngle[client] = angles[1];
 
 	// 60 ticks delay after teleports before we start testing again.
-	if(gI_AbsTicks[client] - gI_LastTeleportTick[client] < (SAMPLE_SIZE * 2))
+	if(++gI_AbsTicks[client] - gI_LastTeleportTick[client] < (SAMPLE_SIZE * 2))
 	{
 		return Plugin_Continue;
 	}
-
-	float fDeltaAngle = angles[1] - gF_PreviousAngle[client];
 
 	if(fDeltaAngle > 180.0)
 	{
@@ -308,12 +307,14 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 	{
 		return Plugin_Continue;
 	}
+
+	int iFlags = GetEntityFlags(client);
 	
 	/*
 	* BASH remake
 	* Some of the logic may seem redundant, but it probably isn't.
 	*/
-	if((GetEntityFlags(client) & FL_ONGROUND) == 0)
+	if((iFlags & FL_ONGROUND) == 0)
 	{
 		// WARNING: UGLY CODE.
 		if((buttons & (IN_MOVELEFT | IN_MOVERIGHT)) != (IN_MOVELEFT | IN_MOVERIGHT) ||
@@ -403,11 +404,9 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 	float fSpeed = (SquareRoot(Pow(fAbsVelocity[0], 2.0) + Pow(fAbsVelocity[1], 2.0)));
 	
 	// Perfect turn rate formatter.
-	if(Oryx_WithinFlThresh(fDeltaAngleAbs, gF_PreviousOptimizedAngle[client], 128.0) && fSpeed < 2560.0)
+	if(Oryx_WithinThreshold(fDeltaAngleAbs, gF_PreviousOptimizedAngle[client], (gF_PreviousOptimizedAngle[client] / 128.0)) && fSpeed < 2560.0)
 	{
-		gI_PerfAngleStreak[client]++;
-
-		if(gI_PerfAngleStreak[client] == 10)
+		if(++gI_PerfAngleStreak[client] == 10)
 		{
 			Oryx_Trigger(client, TRIGGER_LOW, DESC1);
 		}
@@ -428,12 +427,14 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 		gI_PerfAngleStreak[client] = 0;
 	}
 
-	if((buttons & (IN_LEFT | IN_RIGHT)) == 0)
+	int iLR = (buttons & (IN_LEFT | IN_RIGHT));
+
+	if(iLR == (IN_LEFT | IN_RIGHT) || iLR == 0)
 	{
 		// +left/right
-		if(Oryx_WithinFlThresh(fDeltaAngleAbs, gF_PreviousDeltaAngle[client], 128.0))
+		if(Oryx_WithinThreshold(fDeltaAngleAbs, gF_PreviousDeltaAngle[client], (gF_PreviousDeltaAngle[client] / 128.0)))
 		{
-			if((GetEntityFlags(client) & FL_ONGROUND) == 0)
+			if((iFlags & FL_ONGROUND) == 0)
 			{
 				gI_SteadyAngleStreak[client]++;
 
@@ -448,20 +449,27 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 		{
 			gI_SteadyAngleStreak[client] = 0;
 		}
-		
+
 		// Basically +left/right check but on the ground.
-		if((GetEntityFlags(client) & FL_ONGROUND) > 0 && Oryx_WithinFlThresh(fDeltaAngleAbs, 1.2, 128.0))
+		if((iFlags & FL_ONGROUND) > 0 && Oryx_WithinThreshold(fDeltaAngleAbs, 1.2, 0.03))
 		{
 			gI_SteadyAngleStreakPre[client]++;
 
-			if(gI_SteadyAngleStreakPre[client] > 18)
+			if(gI_SteadyAngleStreakPre[client] == 20)
+			{
+				Oryx_Trigger(client, TRIGGER_LOW, DESC4);
+			}
+
+			else if(gI_SteadyAngleStreakPre[client] == 30)
 			{
 				Oryx_Trigger(client, TRIGGER_MEDIUM, DESC4);
 			}
 
-			else if(gI_SteadyAngleStreakPre[client] > 36)
+			else if(gI_SteadyAngleStreakPre[client] == 45)
 			{
 				Oryx_Trigger(client, TRIGGER_HIGH, DESC4);
+
+				gI_SteadyAngleStreakPre[client] = 0;
 			}
 		}
 
@@ -473,7 +481,6 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 	
 	gI_PreviousButtons[client] = buttons;
 	gF_PreviousOptimizedAngle[client] = ArcSine(30.0 / fSpeed) * 57.29577951308;
-	gF_PreviousAngle[client] = angles[1];
 	gF_PreviousDeltaAngle[client] = fDeltaAngleAbs;
 	gF_PrevDeltaAngle2[client] = fDeltaAngle;
 

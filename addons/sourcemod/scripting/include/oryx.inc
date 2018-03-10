@@ -90,14 +90,14 @@ native void Oryx_PrintToAdmins(char[] msg);
 native void Oryx_PrintToAdminsConsole(char[] msg);
 
 /**
- * Tests if f1 is within a 1/frac threshold of f2.
+ * Checks if f1 is inbetween a specified threshold of f12.
  *
  * @param f1					First value.
  * @param f2					Second value.
- * @param frac					Used as a fractional threshold of f2 for f1 to be within.
+ * @param frac					Used as a threshold of f2 for f1 to be within.
  * @return 						True if the test passed.
  */
-native bool Oryx_WithinFlThresh(float f1, float f2, float frac);
+native bool Oryx_WithinThreshold(float f1, float f2, float threshold);
 
 /**
  * A tiny function to veify if the player fits gameplay.
