@@ -219,7 +219,7 @@ public Action Command_PrintScrollStats(int client, int args)
 		return Plugin_Handled;
 	}
 
-	if(gA_JumpStats[target] == null || gA_JumpStats[target].Length == 0)
+	if(GetSampledJumps(target) == 0)
 	{
 		ReplyToCommand(client, "\x03%N\x01 does not have recorded jump stats.", target);
 
@@ -458,35 +458,39 @@ Action SetupMove(int client, int buttons)
 
 	if(iGroundState == State_Landing)
 	{
-		int iScrolls = gA_StatsArray[client][StatsArray_Scrolls];
-
-		if(iScrolls == 0)
+		// Don't count the very first jump.
+		if(gA_StatsArray[client][StatsArray_GroundTicks] < (TICKS_NOT_COUNT_JUMP / 4))
 		{
-			ResetStatsArray(client);
+			int iScrolls = gA_StatsArray[client][StatsArray_Scrolls];
 
-			return Plugin_Continue;
+			if(iScrolls == 0)
+			{
+				ResetStatsArray(client);
+
+				return Plugin_Continue;
+			}
+
+			int iJump = gI_CurrentJump[client];
+			gA_JumpStats[client].Resize(iJump + 1);
+
+			gA_JumpStats[client].Set(iJump, iScrolls, StatsArray_Scrolls);
+			gA_JumpStats[client].Set(iJump, gA_StatsArray[client][StatsArray_BeforeGround], StatsArray_BeforeGround);
+			gA_JumpStats[client].Set(iJump, 0, StatsArray_AfterGround);
+			gA_JumpStats[client].Set(iJump, gA_StatsArray[client][StatsArray_GroundTicks], StatsArray_GroundTicks);
+			gA_JumpStats[client].Set(iJump, (gA_StatsArray[client][StatsArray_AverageTicks] / iScrolls), StatsArray_AverageTicks);
+			gA_JumpStats[client].Set(iJump, gA_StatsArray[client][StatsArray_PerfectJump], StatsArray_PerfectJump);
+
+			#if defined DEBUG
+			PrintToChat(client, "{ %d, %d, %d, %d, %d, %d }", gA_StatsArray[client][StatsArray_Scrolls],
+				gA_StatsArray[client][StatsArray_BeforeGround],
+				(iJump > 0)? gA_JumpStats[client].Get(iJump - 1, gA_StatsArray[client][StatsArray_AfterGround]):0,
+				gA_StatsArray[client][StatsArray_GroundTicks],
+				(gA_StatsArray[client][StatsArray_AverageTicks] / iScrolls),
+				gA_StatsArray[client][StatsArray_PerfectJump]);
+			#endif
+
+			gI_CurrentJump[client]++;
 		}
-
-		int iJump = gI_CurrentJump[client];
-		gA_JumpStats[client].Resize(iJump + 1);
-
-		gA_JumpStats[client].Set(iJump, iScrolls, StatsArray_Scrolls);
-		gA_JumpStats[client].Set(iJump, gA_StatsArray[client][StatsArray_BeforeGround], StatsArray_BeforeGround);
-		gA_JumpStats[client].Set(iJump, 0, StatsArray_AfterGround);
-		gA_JumpStats[client].Set(iJump, gA_StatsArray[client][StatsArray_GroundTicks], StatsArray_GroundTicks);
-		gA_JumpStats[client].Set(iJump, (gA_StatsArray[client][StatsArray_AverageTicks] / iScrolls), StatsArray_AverageTicks);
-		gA_JumpStats[client].Set(iJump, gA_StatsArray[client][StatsArray_PerfectJump], StatsArray_PerfectJump);
-
-		#if defined DEBUG
-		PrintToChat(client, "{ %d, %d, %d, %d, %d, %d }", gA_StatsArray[client][StatsArray_Scrolls],
-			gA_StatsArray[client][StatsArray_BeforeGround],
-			(iJump > 0)? gA_JumpStats[client].Get(iJump - 1, gA_StatsArray[client][StatsArray_AfterGround]):0,
-			gA_StatsArray[client][StatsArray_GroundTicks],
-			(gA_StatsArray[client][StatsArray_AverageTicks] / iScrolls),
-			gA_StatsArray[client][StatsArray_PerfectJump]);
-		#endif
-
-		gI_CurrentJump[client]++;
 
 		ResetStatsArray(client);
 	}
