@@ -36,7 +36,7 @@ bool gB_Locked[MAXPLAYERS+1];
 
 public Plugin myinfo = 
 {
-	name = "ORYX Anti-Cheat",
+	name = "ORYX bunnyhop anti-cheat",
 	author = "Rusty, shavit",
 	description = "Cheat detection interface.",
 	version = ORYX_VERSION,
