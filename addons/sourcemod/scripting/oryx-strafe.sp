@@ -186,11 +186,6 @@ public void OnLibraryRemoved(const char[] name)
 	}
 }
 
-bool EnoughBASHData(int client)
-{
-	return gA_StrafeHistory[client].Length >= SAMPLE_SIZE;
-}
-
 int GetSampledStrafes(int client)
 {
 	if(gA_StrafeHistory[client] == null)
