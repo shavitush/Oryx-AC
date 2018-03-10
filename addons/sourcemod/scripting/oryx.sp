@@ -29,6 +29,7 @@ Handle gH_Forwards_OnTrigger = null;
 
 char gS_LogPath[PLATFORM_MAX_PATH];
 char gS_BeepSound[PLATFORM_MAX_PATH];
+bool gB_NoSound = false;
 
 bool gB_Testing[MAXPLAYERS+1];
 bool gB_Locked[MAXPLAYERS+1];
@@ -170,6 +171,7 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	if(level == TRIGGER_LOW)
 	{
 		strcopy(sLevel, 16, "LOW");
+		gB_NoSound = true; // Don't play the annoying beep sound for LOW detections.
 	}
 
 	else if(level == TRIGGER_MEDIUM)
@@ -250,14 +252,19 @@ public int Native_PrintToAdmins(Handle plugin, int numParams)
 		{
 			PrintToChat(i, "%s\x04[ORYX]\x01 %s", (gEV_Type == Engine_CSGO)? " ":"", sMessage);
 
-			if(gEV_Type == Engine_CSS || gEV_Type == Engine_TF2)
+			if(gB_NoSound)
 			{
-				EmitSoundToClient(i, gS_BeepSound);
-			}
+				if(gEV_Type == Engine_CSS || gEV_Type == Engine_TF2)
+				{
+					EmitSoundToClient(i, gS_BeepSound);
+				}
 
-			else
-			{
-				ClientCommand(i, "play */%s", gS_BeepSound);
+				else
+				{
+					ClientCommand(i, "play */%s", gS_BeepSound);
+				}
+
+				gB_NoSound = false;
 			}
 		}
 	}
