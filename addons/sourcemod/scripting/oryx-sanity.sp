@@ -176,6 +176,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	return SetupMove(client, buttons, mouse[0], angles[1], vel);
 }
 
+#if defined bhoptimer
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style, any stylesettings[STYLESETTINGS_SIZE], int mouse[2])
 {
 	// Don't do sanity checks on players that aren't running, to reduce false positive risks.
@@ -195,6 +196,7 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 
 	return SetupMove(client, buttons, mouse[0], angles[1], vel);
 }
+#endif
 
 Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 {

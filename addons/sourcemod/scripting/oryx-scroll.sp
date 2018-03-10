@@ -303,6 +303,7 @@ public Action OnPlayerRunCmd(int client, int &buttons)
 	return SetupMove(client, buttons);
 }
 
+#if defined bhoptimer
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style, any stylesettings[STYLESETTINGS_SIZE])
 {
 	// Ignore autobhop styles.
@@ -322,6 +323,7 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 
 	return SetupMove(client, buttons);
 }
+#endif
 
 void ResetStatsArray(int client)
 {

@@ -266,6 +266,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	return SetupMove(client, buttons, angles, vel);
 }
 
+#if defined bhoptimer
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style)
 {
 	// Ignore whitelisted styles.
@@ -279,6 +280,7 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 
 	return SetupMove(client, buttons, angles, vel);
 }
+#endif
 
 Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 {
