@@ -60,6 +60,7 @@ Prestrafe tool | Player is using a static turnrate to get 289 walk speed. Same a
 Average strafe too close to 0 | The average strafe offset is suspiciously near 0 | oryx-strafe
 Too many perfect strafes | The average strafe offset is not too close to 0, but there is a suspiciously high frequency of 0s | oryx-strafe
 Movement config | Player exhibits behavior that is humanly possible, but movement configs would enforce it | oryx-configcheck
++klook usage | A movement config that disables +forward and +back in specific cases (such as LJ binds) | oryx-configcheck
 Unsynchronised movement | Wish velocity does not align with with the player's buttons variable | oryx-sanity
 Invalid wish velocity | Wish velocity can only be specific values ([link 1](https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#557), [link 2](https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#842)) | oryx-sanity
 Wish velocity is too high | Wish velocity exceeds the default `cl_forwardspeed` or `cl_sidespeed` settings | oryx-sanity

@@ -25,15 +25,18 @@
 
 EngineVersion gEV_Type = Engine_Unknown;
 
+Handle gH_Forwards_OnTrigger = null;
+
 char gS_LogPath[PLATFORM_MAX_PATH];
 char gS_BeepSound[PLATFORM_MAX_PATH];
+bool gB_NoSound = false;
 
 bool gB_Testing[MAXPLAYERS+1];
 bool gB_Locked[MAXPLAYERS+1];
 
 public Plugin myinfo = 
 {
-	name = "ORYX Anti-Cheat",
+	name = "ORYX bunnyhop anti-cheat",
 	author = "Rusty, shavit",
 	description = "Cheat detection interface.",
 	version = ORYX_VERSION,
@@ -43,7 +46,7 @@ public Plugin myinfo =
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
 	CreateNative("Oryx_Trigger", Native_OryxTrigger);
-	CreateNative("Oryx_WithinFlThresh", Native_WithinFlThresh);
+	CreateNative("Oryx_WithinThreshold", Native_WithinThreshold);
 	CreateNative("Oryx_PrintToAdmins", Native_PrintToAdmins);
 	CreateNative("Oryx_PrintToAdminsConsole", Native_PrintToAdminsConsole);
 
@@ -55,6 +58,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 public void OnPluginStart()
 {
+	gH_Forwards_OnTrigger = CreateGlobalForward("Oryx_OnTrigger", ET_Event, Param_Cell, Param_CellByRef, Param_String);
+
 	gEV_Type = GetEngineVersion();
 
 	CreateConVar("oryx_version", ORYX_VERSION, "Plugin version.", (FCVAR_NOTIFY | FCVAR_DONTRECORD));
@@ -151,9 +156,22 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 
 	GetNativeString(3, sCheatDescription, 32);
 
+	Action result = Plugin_Continue;
+	Call_StartForward(gH_Forwards_OnTrigger);
+	Call_PushCell(client);
+	Call_PushCellRef(level);
+	Call_PushStringEx(sCheatDescription, 32, SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
+	Call_Finish(result);
+
+	if(result == Plugin_Stop)
+	{
+		return view_as<int>(Plugin_Stop);
+	}
+
 	if(level == TRIGGER_LOW)
 	{
 		strcopy(sLevel, 16, "LOW");
+		gB_NoSound = true; // Don't play the annoying beep sound for LOW detections.
 	}
 
 	else if(level == TRIGGER_MEDIUM)
@@ -164,7 +182,11 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	else if(level == TRIGGER_HIGH)
 	{
 		strcopy(sLevel, 16, "HIGH");
-		KickClient(client, "[ORYX] %s", sCheatDescription);
+
+		if(result != Plugin_Handled)
+		{
+			KickClient(client, "[ORYX] %s", sCheatDescription);
+		}
 	}
 
 	else if(level == TRIGGER_HIGH_NOKICK)
@@ -175,7 +197,11 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	else if(level == TRIGGER_DEFINITIVE)
 	{
 		strcopy(sLevel, 16, "DEFINITIVE");
-		KickClient(client, "[ORYX] %s", sCheatDescription);
+
+		if(result != Plugin_Handled)
+		{
+			KickClient(client, "[ORYX] %s", sCheatDescription);
+		}
 	}
 
 	else if(level == TRIGGER_TEST)
@@ -191,7 +217,7 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 			}
 		}
 
-		return;
+		return view_as<int>(result);
 	}
 
 	char[] sAuth = new char[32];
@@ -202,15 +228,17 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 	Oryx_PrintToAdmins(sBuffer);
 	
 	LogToFileEx(gS_LogPath, "%L - Cheat: %s | Level: %s", client, sCheatDescription, sLevel);
+
+	return view_as<int>(result);
 }
 
-public int Native_WithinFlThresh(Handle plugin, int numParams)
+public int Native_WithinThreshold(Handle plugin, int numParams)
 {
-	float f2 = GetNativeCell(2);
-	float t = f2 / GetNativeCell(3);
 	float f1 = GetNativeCell(1);
+	float f2 = GetNativeCell(2);
+	float threshold = GetNativeCell(3);
 
-	return (f1 > (f2 - t) && f1 < (f2 + t));
+	return view_as<int>(FloatAbs(f1 - f2) <= threshold);
 }
 
 public int Native_PrintToAdmins(Handle plugin, int numParams)
@@ -224,15 +252,20 @@ public int Native_PrintToAdmins(Handle plugin, int numParams)
 		{
 			PrintToChat(i, "%s\x04[ORYX]\x01 %s", (gEV_Type == Engine_CSGO)? " ":"", sMessage);
 
-			if(gEV_Type == Engine_CSS || gEV_Type == Engine_TF2)
+			if(!gB_NoSound)
 			{
-				EmitSoundToClient(i, gS_BeepSound);
+				if(gEV_Type == Engine_CSS || gEV_Type == Engine_TF2)
+				{
+					EmitSoundToClient(i, gS_BeepSound);
+				}
+
+				else
+				{
+					ClientCommand(i, "play */%s", gS_BeepSound);
+				}
 			}
 
-			else
-			{
-				ClientCommand(i, "play */%s", gS_BeepSound);
-			}
+			gB_NoSound = false;
 		}
 	}
 }

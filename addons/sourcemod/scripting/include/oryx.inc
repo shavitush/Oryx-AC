@@ -21,7 +21,7 @@
 #endif
 #define _oryx_included
 
-#define ORYX_VERSION "1.1"
+#define ORYX_VERSION "1.2"
 
 /**
 * List of current detection descriptions:
@@ -54,14 +54,24 @@ enum
 #define bhoptimer
 
 /**
- * Call to activate oryx's trigger procedure (logging, kicking, admin notifications, etc..).
+ * Called when Oryx gets triggered on a client.
+ *
+ * @param client				Client entity index.
+ * @param level					Level of detection as defined in the above enum.
+ * @param cheat					Short description or name of the cheat being detected. 32 cells char array.
+ * @return						Plugin_Continue to do nothing. Plugin_Changed to modify values. Plugin_Handled to abort kicks. Plugin_Stop to completely ignore the trigger.
+ */
+forward Action Oryx_OnTrigger(int client, int &level, char[] cheat);
+
+/**
+ * Call to activate Oryx's trigger procedure (logging, kicking, admin notifications, etc..).
  *
  * @param client				Client entity index.
  * @param level					Level of detection as defined in the above enum.
  * @param cheat					Short description or name of the cheat being detected.
- * @noreturn
+ * @return						Return value of the Oryx_OnTrigger forward.
  */
-native void Oryx_Trigger(int client, int level, char[] cheat);
+native Action Oryx_Trigger(int client, int level, const char[] cheat);
 
 /**
  * Prints a message to admins' chat.
@@ -80,14 +90,14 @@ native void Oryx_PrintToAdmins(char[] msg);
 native void Oryx_PrintToAdminsConsole(char[] msg);
 
 /**
- * Tests if f1 is within a 1/frac threshold of f2.
+ * Checks if f1 is inbetween a specified threshold of f12.
  *
  * @param f1					First value.
  * @param f2					Second value.
- * @param frac					Used as a fractional threshold of f2 for f1 to be within.
+ * @param frac					Used as a threshold of f2 for f1 to be within.
  * @return 						True if the test passed.
  */
-native bool Oryx_WithinFlThresh(float f1, float f2, float frac);
+native bool Oryx_WithinThreshold(float f1, float f2, float threshold);
 
 /**
  * A tiny function to veify if the player fits gameplay.

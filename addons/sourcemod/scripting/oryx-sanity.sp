@@ -34,7 +34,7 @@
 #define DESC4 "Raw input discrepancy"
 
 // Amount of ticks in a row where raw input can have discrepancies before acting.
-#define SAMPLE_SIZE 20
+#define SAMPLE_SIZE 60
 
 EngineVersion gEV_Type = Engine_Unknown;
 
@@ -44,6 +44,8 @@ int gI_BadInputStreak[MAXPLAYERS+1];
 
 bool gB_Shavit = false;
 Handle gH_Teleport = null;
+
+bool gB_TriggeredRawInput[MAXPLAYERS+1];
 
 public Plugin myinfo = 
 {
@@ -75,6 +77,14 @@ public void OnPluginStart()
 	{
 		OnLibraryAdded("dhooks");
 	}
+
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		if(IsClientInGame(i))
+		{
+			OnClientPutInServer(i);
+		}
+	}
 }
 
 public MRESReturn DHook_Teleport(int pThis, Handle hReturn)
@@ -90,6 +100,7 @@ public MRESReturn DHook_Teleport(int pThis, Handle hReturn)
 public void OnClientPutInServer(int client)
 {
 	gI_BadInputStreak[client] = 0;
+	gB_TriggeredRawInput[client] = false;
 
 	if(gH_Teleport != null)
 	{
@@ -123,14 +134,6 @@ public void OnLibraryAdded(const char[] name)
 				if(gEV_Type == Engine_CSGO)
 				{
 					DHookAddParam(gH_Teleport, HookParamType_Bool);
-				}
-
-				for(int i = 1; i <= MaxClients; i++)
-				{
-					if(IsClientInGame(i))
-					{
-						OnClientPutInServer(i);
-					}
 				}
 			}
 
@@ -173,8 +176,15 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	return SetupMove(client, buttons, mouse[0], angles[1], vel);
 }
 
+#if defined bhoptimer
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style, any stylesettings[STYLESETTINGS_SIZE], int mouse[2])
 {
+	// Don't do sanity checks on players that aren't running, to reduce false positive risks.
+	if(status != Timer_Running)
+	{
+		return Plugin_Continue;
+	}
+
 	// Ignore whitelisted styles.
 	char[] sSpecial = new char[32];
 	Shavit_GetStyleStrings(style, sSpecialString, sSpecial, 32);
@@ -186,6 +196,7 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 
 	return SetupMove(client, buttons, mouse[0], angles[1], vel);
 }
+#endif
 
 Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 {
@@ -195,15 +206,15 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 	}
 
 	bool bBadInput = false;
+	bool bUnsure = false;
+
 	int iLR = (buttons & (IN_LEFT | IN_RIGHT));
+	float fDeltaAngle = yaw - gF_PreviousAngle[client];
 
 	// Only pass if mouse movement isn't being tampered by +left/right.
 	// TODO: Don't allow cl_yawspeed 0?
-	if(IsLegalMoveType(client) && mousedx != 0 && (iLR == (IN_LEFT | IN_RIGHT) || iLR == 0))
+	if(!gB_TriggeredRawInput[client] && IsLegalMoveType(client) && mousedx != 0 && (iLR == (IN_LEFT | IN_RIGHT) || iLR == 0))
 	{
-		bool bUnsure = false;
-		float fDeltaAngle = yaw - gF_PreviousAngle[client];
-
 		if(fDeltaAngle > 180.0)
 		{
 			fDeltaAngle -= 360.0;
@@ -234,7 +245,7 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 			bBadInput = true;
 		}
 
-		else if(bUnsure)
+		if(bUnsure)
 		{
 			bBadInput = false;
 		}
@@ -246,9 +257,13 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 	{
 		if(++gI_BadInputStreak[client] >= SAMPLE_SIZE)
 		{
-			Oryx_Trigger(client, TRIGGER_HIGH_NOKICK, DESC4);
+			char[] sReason = new char[32];
+			FormatEx(sReason, 32, DESC4 ... "d%.03f x%d u%d", fDeltaAngle, mousedx, bUnsure);
+
+			Oryx_Trigger(client, TRIGGER_MEDIUM, sReason);
 
 			gI_BadInputStreak[client] = 0;
+			gB_TriggeredRawInput[client] = true;
 		}
 	}
 
