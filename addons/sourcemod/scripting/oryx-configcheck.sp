@@ -28,6 +28,14 @@
 #pragma semicolon 1
 
 #define DESC1 "Movement config"
+#define DESC2 "+klook usage"
+
+// Minimum delay in ticks from last detection until a new one triggers.
+#define KLOOK_DELAY 1000
+
+ConVar gCV_KLookDetection = null;
+bool gB_KLookUsed[MAXPLAYERS+1];
+int gI_LastDetection[MAXPLAYERS+1];
 
 int gI_PerfectConfigStreak[MAXPLAYERS+1];
 int gI_PreviousButtons[MAXPLAYERS+1];
@@ -41,7 +49,7 @@ public Plugin myinfo =
 {
 	name = "ORYX movement config module",
 	author = "Rusty, shavit",
-	description = "Detects movement configs (null binds, \"k120 syndrome\" etc).",
+	description = "Detects movement configs (null binds, \"k120 syndrome\", +klook LJ binds).",
 	version = ORYX_VERSION,
 	url = "https://github.com/shavitush/Oryx-AC"
 }
@@ -50,6 +58,9 @@ public void OnPluginStart()
 {
 	RegAdminCmd("config_streak", Command_ConfigStreak, ADMFLAG_BAN, "Print the config stat buffer for a given player.");
 
+	gCV_KLookDetection = CreateConVar("oryx-configcheck_klook", "1", "How to treat +klook usage?\n-1 - do not.\n0 - disable +klook.\n1 - disable + alert admins and log.\n2 - kick player.", 0, true, -1.0, true, 2.0);
+	AutoExecConfig();
+
 	LoadTranslations("common.phrases");
 
 	gB_Shavit = LibraryExists("shavit");
@@ -57,6 +68,9 @@ public void OnPluginStart()
 
 public void OnClientPutInServer(int client)
 {
+	gB_KLookUsed[client] = false;
+	gI_LastDetection[client] = 0;
+
 	gI_PerfectConfigStreak[client] = 0;
 	#if defined bhoptimer
 	gI_JumpsFromZone[client] = 0;
@@ -110,14 +124,14 @@ public Action Command_ConfigStreak(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action OnPlayerRunCmd(int client, int &buttons)
+public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3])
 {
 	if(gB_Shavit || !IsPlayerAlive(client) || IsFakeClient(client))
 	{
 		return Plugin_Continue;
 	}
 
-	return SetupMove(client, buttons);
+	return SetupMove(client, buttons, vel);
 }
 
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style)
@@ -131,10 +145,10 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 		return Plugin_Continue;
 	}
 
-	return SetupMove(client, buttons);
+	return SetupMove(client, buttons, vel);
 }
 
-Action SetupMove(int client, int &buttons)
+Action SetupMove(int client, int &buttons, float vel[3])
 {
 	if(!IsPlayerAlive(client) || IsFakeClient(client))
 	{
@@ -142,6 +156,47 @@ Action SetupMove(int client, int &buttons)
 	}
 
 	int iFlags = GetEntityFlags(client);
+	int iDetect = gCV_KLookDetection.IntValue;
+
+	if(iDetect > -1)
+	{
+		if((iFlags & FL_ONGROUND) == 0)
+		{
+			int iLR = (buttons & (IN_MOVELEFT | IN_MOVERIGHT));
+			int iFB = (buttons & (IN_FORWARD | IN_BACK));
+
+			if((vel[0] == 0.0 && iFB != 0 && iFB != (IN_FORWARD | IN_BACK)) ||
+				(vel[1] == 0.0 && iLR != 0 && iLR != (IN_MOVELEFT | IN_MOVERIGHT)))
+			{
+				// Disable movement for the whole jump
+				gB_KLookUsed[client] = true;
+			}
+		}
+
+		else
+		{
+			gB_KLookUsed[client] = false;
+		}
+
+		if(gB_KLookUsed[client])
+		{
+			vel[0] = 0.0;
+			vel[1] = 0.0;
+
+			if(iDetect > 0)
+			{
+				int iTicks = GetGameTickCount();
+
+				if(iTicks - gI_LastDetection[client] >= KLOOK_DELAY)
+				{
+					Oryx_Trigger(client, (iDetect == 1)? TRIGGER_HIGH_NOKICK:TRIGGER_DEFINITIVE, DESC2);
+					gI_LastDetection[client] = iTicks;
+				}
+			}
+
+			return Plugin_Changed;
+		}
+	}
 	
 	#if defined bhoptimer
 	// Attempt at only sampling real gameplay (out of the start zone).
