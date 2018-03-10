@@ -56,8 +56,8 @@ ArrayList gA_StrafeHistory[MAXPLAYERS+1];
 
 float gF_PreviousOptimizedAngle[MAXPLAYERS+1];
 float gF_PreviousAngle[MAXPLAYERS+1];
+float gF_PreviousDeltaAngleAbs[MAXPLAYERS+1];
 float gF_PreviousDeltaAngle[MAXPLAYERS+1];
-float gF_PrevDeltaAngle2[MAXPLAYERS+1];
 
 int gI_AbsTicks[MAXPLAYERS+1];
 int gI_PreviousButtons[MAXPLAYERS+1];
@@ -346,11 +346,11 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 			}
 		}
 
-		// TODO: this is possibly wrong
-		if(fDeltaAngleAbs != 0.0 &&
-			((fDeltaAngle < 0.0 && gF_PrevDeltaAngle2[client] > 0.0) ||
-				(fDeltaAngle > 0.0 && gF_PrevDeltaAngle2[client] < 0.0) ||
-				gF_PreviousDeltaAngle[client] == 0.0) && !gB_DirectionChanged[client])
+		if(!gB_DirectionChanged[client] &&
+			(fDeltaAngleAbs != 0.0 &&
+			((fDeltaAngle < 0.0 && gF_PreviousDeltaAngle[client] > 0.0) ||
+			(fDeltaAngle > 0.0 && gF_PreviousDeltaAngle[client] < 0.0) ||
+			gF_PreviousDeltaAngleAbs[client] == 0.0)))
 		{
 			gB_DirectionChanged[client] = true;
 			gI_AngleTransitionTick[client] = gI_AbsTicks[client];
@@ -442,7 +442,7 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 	if(iLR == (IN_LEFT | IN_RIGHT) || iLR == 0)
 	{
 		// +left/right
-		if(Oryx_WithinThreshold(fDeltaAngleAbs, gF_PreviousDeltaAngle[client], (gF_PreviousDeltaAngle[client] / 128.0)))
+		if(Oryx_WithinThreshold(fDeltaAngleAbs, gF_PreviousDeltaAngleAbs[client], (gF_PreviousDeltaAngleAbs[client] / 128.0)))
 		{
 			if((iFlags & FL_ONGROUND) == 0)
 			{
@@ -493,8 +493,8 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 	
 	gI_PreviousButtons[client] = buttons;
 	gF_PreviousOptimizedAngle[client] = ArcSine(30.0 / fSpeed) * 57.29577951308;
-	gF_PreviousDeltaAngle[client] = fDeltaAngleAbs;
-	gF_PrevDeltaAngle2[client] = fDeltaAngle;
+	gF_PreviousDeltaAngleAbs[client] = fDeltaAngleAbs;
+	gF_PreviousDeltaAngle[client] = fDeltaAngle;
 
 	return Plugin_Continue;
 }
@@ -523,7 +523,7 @@ void AnalyzeBASHStats(int client)
 	// Average tick difference.
 	if(iTickDifference < 9)
 	{
-		Oryx_Trigger(client, TRIGGER_HIGH, DESC6);
+		Oryx_Trigger(client, TRIGGER_MEDIUM, DESC6);
 		gI_BASHTriggerCountdown[client] = 35;
 	}
 

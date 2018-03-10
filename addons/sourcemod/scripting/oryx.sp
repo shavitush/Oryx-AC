@@ -252,7 +252,7 @@ public int Native_PrintToAdmins(Handle plugin, int numParams)
 		{
 			PrintToChat(i, "%s\x04[ORYX]\x01 %s", (gEV_Type == Engine_CSGO)? " ":"", sMessage);
 
-			if(gB_NoSound)
+			if(!gB_NoSound)
 			{
 				if(gEV_Type == Engine_CSS || gEV_Type == Engine_TF2)
 				{
@@ -263,9 +263,9 @@ public int Native_PrintToAdmins(Handle plugin, int numParams)
 				{
 					ClientCommand(i, "play */%s", gS_BeepSound);
 				}
-
-				gB_NoSound = false;
 			}
+
+			gB_NoSound = false;
 		}
 	}
 }
