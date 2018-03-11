@@ -76,23 +76,25 @@ native Action Oryx_Trigger(int client, int level, const char[] cheat);
 /**
  * Prints a message to admins' chat.
  *
- * @param msg 					Pre-formatted message to print to admins.
+ * @param format					Formatting rules.
+ * @param any						Variable number of format parameters.
  * @noreturn
  */
-native void Oryx_PrintToAdmins(const char[] msg);
+native void Oryx_PrintToAdmins(const char[] format, any ...);
 
 /**
  * Prints a message to admins' console.
  *
- * @param msg 					Pre-formatted message to print to admins.
+ * @param format					Formatting rules.
+ * @param any						Variable number of format parameters.
  * @noreturn
  */
-native void Oryx_PrintToAdminsConsole(const char[] msg);
+native void Oryx_PrintToAdminsConsole(const char[] format, any ...);
 
 /**
  * Logs an entry to Oryx's log file.
  *
- * @param format					Formattiing rules.
+ * @param format					Formatting rules.
  * @param any						Variable number of format parameters.
  * @noreturn
  */

@@ -244,14 +244,16 @@ public int Native_WithinThreshold(Handle plugin, int numParams)
 
 public int Native_PrintToAdmins(Handle plugin, int numParams)
 {
-	char[] sMessage = new char[256];
-	GetNativeString(1, sMessage, 256);
+	static int iWritten = 0; // Useless?
+
+	char[] sBuffer = new char[300];
+	FormatNativeString(0, 1, 2, 300, iWritten, sBuffer);
 
 	for(int i = 1; i <= MaxClients; i++)
 	{
 		if(CheckCommandAccess(i, "oryx_admin", ADMFLAG_GENERIC))
 		{
-			PrintToChat(i, "%s\x04[ORYX]\x01 %s", (gEV_Type == Engine_CSGO)? " ":"", sMessage);
+			PrintToChat(i, "%s\x04[ORYX]\x01 %s", (gEV_Type == Engine_CSGO)? " ":"", sBuffer);
 
 			if(!gB_NoSound)
 			{
@@ -273,14 +275,16 @@ public int Native_PrintToAdmins(Handle plugin, int numParams)
 
 public int Native_PrintToAdminsConsole(Handle plugin, int numParams)
 {
-	char[] sMessage = new char[256];
-	GetNativeString(1, sMessage, 256);
+	static int iWritten = 0; // Useless?
+
+	char[] sBuffer = new char[300];
+	FormatNativeString(0, 1, 2, 300, iWritten, sBuffer);
 
 	for(int i = 1; i <= MaxClients; i++)
 	{
 		if(CheckCommandAccess(i, "oryx_admin", ADMFLAG_GENERIC))
 		{
-			PrintToConsole(i, "[ORYX] %s", sMessage);
+			PrintToConsole(i, "[ORYX] %s", sBuffer);
 		}
 	}
 }
