@@ -79,7 +79,7 @@ native Action Oryx_Trigger(int client, int level, const char[] cheat);
  * @param msg 					Pre-formatted message to print to admins.
  * @noreturn
  */
-native void Oryx_PrintToAdmins(char[] msg);
+native void Oryx_PrintToAdmins(const char[] msg);
 
 /**
  * Prints a message to admins' console.
@@ -87,7 +87,16 @@ native void Oryx_PrintToAdmins(char[] msg);
  * @param msg 					Pre-formatted message to print to admins.
  * @noreturn
  */
-native void Oryx_PrintToAdminsConsole(char[] msg);
+native void Oryx_PrintToAdminsConsole(const char[] msg);
+
+/**
+ * Logs an entry to Oryx's log file.
+ *
+ * @param format					Formattiing rules.
+ * @param any						Variable number of format parameters.
+ * @noreturn
+ */
+native void Oryx_LogMessage(const char[] format, any ...);
 
 /**
  * Checks if f1 is inbetween a specified threshold of f12.

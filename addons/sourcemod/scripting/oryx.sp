@@ -49,6 +49,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("Oryx_WithinThreshold", Native_WithinThreshold);
 	CreateNative("Oryx_PrintToAdmins", Native_PrintToAdmins);
 	CreateNative("Oryx_PrintToAdminsConsole", Native_PrintToAdminsConsole);
+	CreateNative("Oryx_LogMessage", Native_LogMessage);
 
 	// registers library, check "bool LibraryExists(const char[] name)" in order to use with other plugins
 	RegPluginLibrary("oryx");
@@ -282,4 +283,21 @@ public int Native_PrintToAdminsConsole(Handle plugin, int numParams)
 			PrintToConsole(i, "[ORYX] %s", sMessage);
 		}
 	}
+}
+
+public int Native_LogMessage(Handle plugin, int numParams)
+{
+	char[] sPlugin = new char[32];
+
+	if(!GetPluginInfo(plugin, PlInfo_Name, sPlugin, 32))
+	{
+		GetPluginFilename(plugin, sPlugin, 32);
+	}
+
+	static int iWritten = 0; // Useless?
+
+	char[] sBuffer = new char[300];
+	FormatNativeString(0, 1, 2, 300, iWritten, sBuffer);
+	
+	LogToFileEx(gS_LogPath, "%s", sBuffer);
 }
