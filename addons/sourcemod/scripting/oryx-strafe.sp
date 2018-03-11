@@ -327,10 +327,10 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 	* BASH remake
 	* Some of the logic may seem redundant, but it probably isn't.
 	*/
-	if((iFlags & FL_ONGROUND) == 0)
+	if((iFlags & (FL_ONGROUND | FL_INWATER)) == 0)
 	{
 		// WARNING: UGLY CODE.
-		if((buttons & (IN_MOVELEFT | IN_MOVERIGHT)) != (IN_MOVELEFT | IN_MOVERIGHT) ||
+		if((buttons & (IN_MOVELEFT | IN_MOVERIGHT)) != (IN_MOVELEFT | IN_MOVERIGHT) &&
 			(buttons & (IN_FORWARD | IN_BACK)) != (IN_FORWARD | IN_BACK))
 		{
 			if( // A/D
@@ -365,7 +365,7 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 
 			int iTick = gI_KeyTransitionTick[client] - gI_AngleTransitionTick[client];
 			
-			if(iTick > -26 && iTick < 26)
+			if(-25 <= iTick <= 25)
 			{
 				gA_StrafeHistory[client].Push(iTick);
 				gI_CurrentStrafe[client]++;
