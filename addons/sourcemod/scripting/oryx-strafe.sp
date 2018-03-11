@@ -542,7 +542,7 @@ void AnalyzeBASHStats(int client)
 		FormatStrafeStats(client, sStrafeStats, 256);
 
 		Oryx_PrintToAdminsConsole(sStrafeStats);
-		LogToFileEx(gS_LogPath, "%s", sStrafeStats);
+		LogToFileEx(gS_LogPath, "%L - %s", client, sStrafeStats);
 
 		return;
 	}
@@ -572,6 +572,6 @@ void AnalyzeBASHStats(int client)
 		FormatStrafeStats(client, sStrafeStats, 256);
 
 		Oryx_PrintToAdminsConsole(sStrafeStats);
-		LogToFileEx(gS_LogPath, "%s", sStrafeStats);
+		LogToFileEx(gS_LogPath, "%L - %s", client, sStrafeStats);
 	}
 }
