@@ -32,6 +32,7 @@
 #define DESC2 "Invalid wish velocity"
 #define DESC3 "Wish velocity is too high"
 #define DESC4 "Raw input discrepancy"
+#define DESC5 "Invalid buttons/wishspeeds"
 
 // Amount of ticks in a row where raw input can have discrepancies before acting.
 #define SAMPLE_SIZE 60
@@ -259,7 +260,7 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float forwardm
 		if(++gI_BadInputStreak[client] >= SAMPLE_SIZE)
 		{
 			char[] sReason = new char[32];
-			FormatEx(sReason, 32, DESC4 ... "d%.03f x%d u%d", fDeltaAngle, mousedx, bUnsure);
+			FormatEx(sReason, 32, DESC4 ... " (d%.03f x%d u%d)", fDeltaAngle, mousedx, bUnsure);
 
 			Oryx_Trigger(client, TRIGGER_MEDIUM, sReason);
 
@@ -299,6 +300,11 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float forwardm
 		InvalidMoveTrigger(client, DESC3, buttons, forwardmove, sidemove);
 	}
 
+	else if(!DoButtonsMatchUp(buttons, forwardmove, sidemove))
+	{
+		InvalidMoveTrigger(client, DESC5, buttons, forwardmove, sidemove);
+	}
+
 	return Plugin_Continue;
 }
 
@@ -310,6 +316,44 @@ bool IsValidMove(float num)
 	float speed = gF_FullPress;
 
 	return (num == 0.0 || num == speed || num == (speed * 0.75) || num == (speed * 0.50) || num == (speed * 0.25));
+}
+
+bool DoButtonsMatchUp(int buttons, float forwardmove, float sidemove)
+{
+	float fHalf = (gF_FullPress * 0.5);
+	int iAD = (buttons & (IN_MOVELEFT | IN_MOVERIGHT));
+
+	if(iAD == 0 || iAD == (IN_MOVELEFT | IN_MOVERIGHT))
+	{
+		if(sidemove != 0.0 && FloatAbs(sidemove) != fHalf)
+		{
+			return false;
+		}
+	}
+
+	else if((iAD == IN_MOVELEFT && sidemove != -gF_FullPress && sidemove != -fHalf) ||
+			(iAD == IN_MOVERIGHT && sidemove != gF_FullPress && sidemove != fHalf))
+	{
+		return false;
+	}
+
+	int iSW = (buttons & (IN_FORWARD | IN_BACK));
+
+	if(iSW == 0 || iSW == (IN_FORWARD | IN_BACK))
+	{
+		if(forwardmove != 0.0 && FloatAbs(forwardmove) != fHalf)
+		{
+			return false;
+		}
+	}
+
+	else if((iSW == IN_FORWARD && forwardmove != gF_FullPress && forwardmove != fHalf) ||
+			(iSW == IN_BACK && forwardmove != -gF_FullPress && forwardmove != -fHalf))
+	{
+		return false;
+	}
+
+	return true;
 }
 
 void InvalidMoveTrigger(int client, const char[] sDescription, int buttons, float forwardmove, float sidemove)

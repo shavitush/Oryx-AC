@@ -65,6 +65,7 @@ Unsynchronised movement | Wish velocity does not align with with the player's bu
 Invalid wish velocity | Wish velocity can only be specific values ([link 1](https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#557), [link 2](https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#842)) | oryx-sanity
 Wish velocity is too high | Wish velocity exceeds the default `cl_forwardspeed` or `cl_sidespeed` settings | oryx-sanity
 Wrong mouse inputs | Raw input has discrepancies with the view angles' yaw delta | oryx-sanity
+Invalid buttons/wishspeeds | Buttons and wishspeeds do not match | oryx-sanity
 Scripted jumps (havg) | Too many perfect jumps indicates a potential jump script usage | oryx-scroll
 Scripted jumps (havgp, patt1, patt2, wpatt, wpatt2) | Too many perfect jumps while maintaining obviously weird scroll stats | oryx-scroll
 Scripted jumps (nobf, bf-af, noaf) | Inhuman stats for scrolls before touching the ground and after jumping | oryx-scroll
