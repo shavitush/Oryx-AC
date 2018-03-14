@@ -191,29 +191,30 @@ bool IsSurfing(int client)
 {
 	float fPosition[3];
 	GetClientAbsOrigin(client, fPosition);
-	Handle hTR = TR_TraceRayFilterEx(fPosition, view_as<float>({90.0, 0.0, 0.0}), MASK_PLAYERSOLID, RayType_Infinite, TRFilter_NoPlayers, client);
+
+	float fEnd[3];
+	fEnd = fPosition;
+	fEnd[2] -= 64.0;
+
+	float fMins[3];
+	GetEntPropVector(client, Prop_Send, "m_vecMins", fMins);
+
+	float fMaxs[3];
+	GetEntPropVector(client, Prop_Send, "m_vecMaxs", fMaxs);
+
+	Handle hTR = TR_TraceHullFilterEx(fPosition, fEnd, fMins, fMaxs, MASK_PLAYERSOLID, TRFilter_NoPlayers, client);
 
 	if(TR_DidHit(hTR))
 	{
-		float fGroundPosition[3];
 		float fNormal[3];
-
-		TR_GetEndPosition(fGroundPosition, hTR);
 		TR_GetPlaneNormal(hTR, fNormal);
 
 		delete hTR;
 
-		// It's safe to assume we're not surfing if we're much higher than the ramp.
-		//
 		// If the plane normal's Z axis is 0.7 or below (alternatively, -0.7 when upside-down) then it's a surf ramp.
 		// https://mxr.alliedmods.net/hl2sdk-css/source/game/server/physics_main.cpp#1059
 
-		if(GetVectorDistance(fPosition, fGroundPosition) >= 32.0 || !(-0.7 <= fNormal[2] <= 0.7))
-		{
-			return false;
-		}
-
-		return true;
+		return (-0.7 <= fNormal[2] <= 0.7);
 	}
 
 	delete hTR;
