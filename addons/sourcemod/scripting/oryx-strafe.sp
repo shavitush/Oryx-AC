@@ -17,6 +17,7 @@
 */
 
 #include <sourcemod>
+#include <sdktools>
 #include <oryx>
 #include <dhooks>
 
@@ -184,6 +185,45 @@ public void OnLibraryRemoved(const char[] name)
 	{
 		gH_Teleport = null;
 	}
+}
+
+bool IsSurfing(int client)
+{
+	float fPosition[3];
+	GetClientAbsOrigin(client, fPosition);
+	Handle hTR = TR_TraceRayFilterEx(fPosition, view_as<float>({90.0, 0.0, 0.0}), MASK_PLAYERSOLID, RayType_Infinite, TRFilter_NoPlayers, client);
+
+	if(TR_DidHit(hTR))
+	{
+		float fGroundPosition[3];
+		float fNormal[3];
+
+		TR_GetEndPosition(fGroundPosition, hTR);
+		TR_GetPlaneNormal(hTR, fNormal);
+
+		delete hTR;
+
+		// It's safe to assume we're not surfing if we're much higher than the ramp.
+		//
+		// If the plane normal's Z axis is 0.7 or below (alternatively, -0.7 when upside-down) then it's a surf ramp.
+		// https://mxr.alliedmods.net/hl2sdk-css/source/game/server/physics_main.cpp#1059
+
+		if(GetVectorDistance(fPosition, fGroundPosition) >= 32.0 || !(-0.7 <= fNormal[2] <= 0.7))
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	delete hTR;
+
+	return false;
+}
+
+public bool TRFilter_NoPlayers(int entity, int mask, any data)
+{
+	return (entity != view_as<int>(data) || (entity < 1 || entity > MaxClients));
 }
 
 int GetSampledStrafes(int client)
@@ -446,7 +486,7 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 		// +left/right
 		if(Oryx_WithinThreshold(fDeltaAngleAbs, gF_PreviousDeltaAngleAbs[client], (gF_PreviousDeltaAngleAbs[client] / 128.0)))
 		{
-			if((iFlags & FL_ONGROUND) == 0)
+			if((iFlags & FL_ONGROUND) == 0 && !IsSurfing(client))
 			{
 				gI_SteadyAngleStreak[client]++;
 
