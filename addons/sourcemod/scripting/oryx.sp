@@ -267,10 +267,10 @@ public int Native_PrintToAdmins(Handle plugin, int numParams)
 					ClientCommand(i, "play */%s", gS_BeepSound);
 				}
 			}
-
-			gB_NoSound = false;
 		}
 	}
+
+	gB_NoSound = false;
 }
 
 public int Native_PrintToAdminsConsole(Handle plugin, int numParams)
