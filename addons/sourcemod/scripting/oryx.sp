@@ -226,7 +226,7 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 
 	char[] sBuffer = new char[128];
 	Format(sBuffer, 128, "\x03%N\x01 - \x05%s\x01 Cheat: %s | Level: %s", client, sAuth, sCheatDescription, sLevel);
-	Oryx_PrintToAdmins(sBuffer);
+	Oryx_PrintToAdmins("%s", sBuffer);
 	
 	LogToFileEx(gS_LogPath, "%L - Cheat: %s | Level: %s", client, sCheatDescription, sLevel);
 

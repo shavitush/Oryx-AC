@@ -582,7 +582,7 @@ void AnalyzeBASHStats(int client)
 		char[] sStrafeStats = new char[256];
 		FormatStrafeStats(client, sStrafeStats, 256);
 
-		Oryx_PrintToAdminsConsole(sStrafeStats);
+		Oryx_PrintToAdminsConsole("%s", sStrafeStats);
 		LogToFileEx(gS_LogPath, "%L - (%d tick difference, %d zeroes) %s", client, iTickDifference, iZeroes, sStrafeStats);
 
 		return;
@@ -612,7 +612,7 @@ void AnalyzeBASHStats(int client)
 		char[] sStrafeStats = new char[256];
 		FormatStrafeStats(client, sStrafeStats, 256);
 
-		Oryx_PrintToAdminsConsole(sStrafeStats);
+		Oryx_PrintToAdminsConsole("%s", sStrafeStats);
 		LogToFileEx(gS_LogPath, "%L - (%d tick difference, %d zeroes) %s", client, iTickDifference, iZeroes, sStrafeStats);
 	}
 }
