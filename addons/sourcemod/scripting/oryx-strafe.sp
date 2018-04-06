@@ -493,7 +493,7 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 
 				if(gI_SteadyAngleStreak[client] == 50)
 				{
-					Oryx_Trigger(client, TRIGGER_HIGH, DESC2);
+					Oryx_Trigger(client, TRIGGER_LOW, DESC2);
 
 					gI_SteadyAngleStreak[client] = 0;
 				}
