@@ -297,26 +297,27 @@ bool IsValidMove(float num)
 	// VERY minor optimization loss, but makes the code less annoying to read.
 	float speed = gF_FullPress;
 
-	// TODO: duck + shift in css
-
 	return (num == 0.0 || num == speed || num == (speed * 0.75) || num == (speed * 0.50) || num == (speed * 0.25));
 }
 
 bool DoButtonsMatchUp(int buttons, float forwardmove, float sidemove)
 {
 	float fHalf = (gF_FullPress * 0.5);
+	float fThreeQuarters = (gF_FullPress * 0.75);
 	int iAD = (buttons & (IN_MOVELEFT | IN_MOVERIGHT));
 
 	if(iAD == 0 || iAD == (IN_MOVELEFT | IN_MOVERIGHT))
 	{
-		if(sidemove != 0.0 && FloatAbs(sidemove) != fHalf)
+		float abs = FloatAbs(sidemove);
+
+		if(sidemove != 0.0 && abs != fHalf && abs != fThreeQuarters)
 		{
 			return false;
 		}
 	}
 
-	else if((iAD == IN_MOVELEFT && sidemove != -gF_FullPress && sidemove != -fHalf) ||
-			(iAD == IN_MOVERIGHT && sidemove != gF_FullPress && sidemove != fHalf))
+	else if((iAD == IN_MOVELEFT && sidemove != -gF_FullPress && sidemove != -fHalf && sidemove != fThreeQuarters) ||
+			(iAD == IN_MOVERIGHT && sidemove != gF_FullPress && sidemove != fHalf && sidemove != -fThreeQuarters))
 	{
 		return false;
 	}
@@ -325,14 +326,16 @@ bool DoButtonsMatchUp(int buttons, float forwardmove, float sidemove)
 
 	if(iSW == 0 || iSW == (IN_FORWARD | IN_BACK))
 	{
-		if(forwardmove != 0.0 && FloatAbs(forwardmove) != fHalf)
+		float abs = FloatAbs(forwardmove);
+
+		if(forwardmove != 0.0 && abs != fHalf && abs != fThreeQuarters)
 		{
 			return false;
 		}
 	}
 
-	else if((iSW == IN_FORWARD && forwardmove != gF_FullPress && forwardmove != fHalf) ||
-			(iSW == IN_BACK && forwardmove != -gF_FullPress && forwardmove != -fHalf))
+	else if((iSW == IN_FORWARD && forwardmove != gF_FullPress && forwardmove != fHalf && forwardmove != fThreeQuarters) ||
+			(iSW == IN_BACK && forwardmove != -gF_FullPress && forwardmove != -fHalf  && forwardmove != -fThreeQuarters))
 	{
 		return false;
 	}
