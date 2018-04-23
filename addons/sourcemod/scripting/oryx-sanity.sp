@@ -20,10 +20,8 @@
 #include <oryx>
 #include <dhooks>
 
-#if defined bhoptimer
 #undef REQUIRE_PLUGIN
 #include <shavit>
-#endif
 
 #pragma newdecls required
 #pragma semicolon 1
@@ -177,31 +175,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	return SetupMove(client, buttons, mouse[0], angles[1], vel[0], vel[1]);
 }
 
-#if defined bhoptimer
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style, any stylesettings[STYLESETTINGS_SIZE], int mouse[2])
 {
-	// Don't do sanity checks on players that aren't running, to reduce false positive risks.
-	if(status != Timer_Running)
-	{
-		return Plugin_Continue;
-	}
-
-	// Ignore whitelisted styles.
-	char[] sSpecial = new char[32];
-	Shavit_GetStyleStrings(style, sSpecialString, sSpecial, 32);
-
-	if(StrContains(sSpecial, "oryx_bypass", false) != -1)
-	{
-		return Plugin_Continue;
-	}
-
 	return SetupMove(client, buttons, mouse[0], angles[1], vel[0], vel[1]);
 }
-#endif
 
 Action SetupMove(int client, int buttons, int mousedx, float yaw, float forwardmove, float sidemove)
 {
-	if(!IsPlayerAlive(client) || IsFakeClient(client))
+	if(Oryx_CanBypass(client))
 	{
 		return Plugin_Continue;
 	}
@@ -215,6 +196,7 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float forwardm
 
 	// Only pass if mouse movement isn't being tampered by +left/right.
 	// TODO: Don't allow cl_yawspeed 0?
+	// TODO: check onyl when tickcount + 1
 	if(!gB_TriggeredRawInput[client] && IsLegalMoveType(client) && mousedx != 0 && (iLR == (IN_LEFT | IN_RIGHT) || iLR == 0))
 	{
 		if(fDeltaAngle > 180.0)
@@ -314,6 +296,8 @@ bool IsValidMove(float num)
 
 	// VERY minor optimization loss, but makes the code less annoying to read.
 	float speed = gF_FullPress;
+
+	// TODO: duck + shift in css
 
 	return (num == 0.0 || num == speed || num == (speed * 0.75) || num == (speed * 0.50) || num == (speed * 0.25));
 }

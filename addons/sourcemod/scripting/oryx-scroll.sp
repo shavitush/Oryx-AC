@@ -21,10 +21,8 @@
 #include <sdktools>
 #include <oryx>
 
-#if defined bhoptimer
 #undef REQUIRE_PLUGIN
 #include <shavit>
-#endif
 
 #pragma newdecls required
 #pragma semicolon 1
@@ -303,7 +301,6 @@ public Action OnPlayerRunCmd(int client, int &buttons)
 	return SetupMove(client, buttons);
 }
 
-#if defined bhoptimer
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style, any stylesettings[STYLESETTINGS_SIZE])
 {
 	// Ignore autobhop styles.
@@ -312,18 +309,8 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 		return Plugin_Continue;
 	}
 
-	// Ignore whitelisted styles.
-	char[] sSpecial = new char[32];
-	Shavit_GetStyleStrings(style, sSpecialString, sSpecial, 32);
-
-	if(StrContains(sSpecial, "oryx_bypass", false) != -1)
-	{
-		return Plugin_Continue;
-	}
-
 	return SetupMove(client, buttons);
 }
-#endif
 
 void ResetStatsArray(int client)
 {
@@ -364,7 +351,7 @@ float GetGroundDistance(int client)
 
 Action SetupMove(int client, int buttons)
 {
-	if(sv_autobunnyhopping != null && gB_AutoBunnyhopping)
+	if((sv_autobunnyhopping != null && gB_AutoBunnyhopping) || Oryx_CanBypass(client))
 	{
 		return Plugin_Continue;
 	}

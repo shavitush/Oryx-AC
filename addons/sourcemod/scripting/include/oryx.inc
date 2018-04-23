@@ -21,7 +21,7 @@
 #endif
 #define _oryx_included
 
-#define ORYX_VERSION "1.2"
+#define ORYX_VERSION "1.3"
 
 /**
 * List of current detection descriptions:
@@ -47,11 +47,6 @@ enum
 	TRIGGER_DEFINITIVE,		// Non-skill-based detection type. 100% sure detection.
 	TRIGGER_TEST			// Allows you to develop new detections on live servers with minimal side effects.
 };
-
-/**
- * Acceptable timers: "bhoptimer" & "notimer"
- */
-#define bhoptimer
 
 /**
  * Called when Oryx gets triggered on a client.
@@ -111,6 +106,17 @@ native void Oryx_LogMessage(const char[] format, any ...);
 native bool Oryx_WithinThreshold(float f1, float f2, float threshold);
 
 /**
+ * Checks if the player has permissions to bypass Oryx.
+ * Will return false if `oryx_allow_bypass` is set to 0.
+ * With bhoptimer or bTimes v1.8.3, will return true for styles with the `oryx_bypass` special flag.
+ * For bTimes2, will return true if the player is in edit mode (rewind/fastforward etc).
+ *
+ * @param client				Client index.
+ * @return 						True if the player can bypass the anticheat.
+ */
+native bool Oryx_CanBypass(int client);
+
+/**
  * A tiny function to veify if the player fits gameplay.
  *
  * @param client				Client entity index.
@@ -125,3 +131,26 @@ stock bool IsLegalMoveType(int client, bool water = true)
 		(GetEntityFlags(client) & FL_ATCONTROLS) == 0 &&
 		(iMoveType == MOVETYPE_WALK || iMoveType == MOVETYPE_ISOMETRIC || iMoveType == MOVETYPE_LADDER);
 }
+
+public SharedPlugin __pl_oryx =
+{
+	name = "oryx",
+	file = "oryx.smx",
+#if defined REQUIRE_PLUGIN
+	required = 1
+#else
+	required = 0
+#endif
+};
+
+#if !defined REQUIRE_PLUGIN
+public void __pl_oryx_SetNTVOptional()
+{
+	MarkNativeAsOptional("Oryx_CanBypass");
+	MarkNativeAsOptional("Oryx_LogMessage");
+	MarkNativeAsOptional("Oryx_PrintToAdmins");
+	MarkNativeAsOptional("Oryx_PrintToAdminsConsole");
+	MarkNativeAsOptional("Oryx_Trigger");
+	MarkNativeAsOptional("Oryx_WithinThreshold");
+}
+#endif

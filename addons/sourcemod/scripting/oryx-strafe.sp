@@ -21,10 +21,8 @@
 #include <oryx>
 #include <dhooks>
 
-#if defined bhoptimer
 #undef REQUIRE_PLUGIN
 #include <shavit>
-#endif
 
 #pragma newdecls required
 #pragma semicolon 1
@@ -307,25 +305,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	return SetupMove(client, buttons, angles, vel);
 }
 
-#if defined bhoptimer
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style)
 {
-	// Ignore whitelisted styles.
-	char[] sSpecial = new char[32];
-	Shavit_GetStyleStrings(style, sSpecialString, sSpecial, 32);
-
-	if(StrContains(sSpecial, "oryx_bypass", false) != -1)
-	{
-		return Plugin_Continue;
-	}
-
 	return SetupMove(client, buttons, angles, vel);
 }
-#endif
 
 Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 {
-	if(!IsPlayerAlive(client) || IsFakeClient(client))
+	if(Oryx_CanBypass(client))
 	{
 		return Plugin_Continue;
 	}
