@@ -37,7 +37,7 @@ enum
 }
 
 int gI_Timer = Timer_None;
-char gS_SpecialString[32];
+char gS_SpecialString[128];
 
 ConVar gCV_AllowBypass = null;
 
@@ -226,7 +226,7 @@ public int Native_CanBypass(Handle plugin, int numParams)
 	{
 		case Timer_Shavit:
 		{
-			Shavit_GetStyleStrings(Shavit_GetBhopStyle(client), sSpecialString, gS_SpecialString, 32);
+			Shavit_GetStyleStrings(Shavit_GetBhopStyle(client), sSpecialString, gS_SpecialString, 128);
 
 			if(StrContains(gS_SpecialString, "oryx_bypass", false) != -1)
 			{
