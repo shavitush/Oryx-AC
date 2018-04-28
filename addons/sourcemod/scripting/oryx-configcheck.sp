@@ -54,7 +54,7 @@ public void OnPluginStart()
 {
 	RegAdminCmd("config_streak", Command_ConfigStreak, ADMFLAG_BAN, "Print the config stat buffer for a given player.");
 
-	gCV_KLookDetection = CreateConVar("oryx-configcheck_klook", "1", "How to treat +klook usage?\n-1 - do not.\n0 - disable +klook.\n1 - disable + alert admins and log.\n2 - kick player.", 0, true, -1.0, true, 2.0);
+	gCV_KLookDetection = CreateConVar("oryx-configcheck_klook", "0", "How to treat +klook usage?\n-1 - do not.\n0 - disable +klook.\n1 - disable + alert admins and log.\n2 - kick player.", 0, true, -1.0, true, 2.0);
 	AutoExecConfig();
 
 	LoadTranslations("common.phrases");
