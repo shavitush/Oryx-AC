@@ -302,6 +302,7 @@ bool IsValidMove(float num)
 
 bool DoButtonsMatchUp(int buttons, float forwardmove, float sidemove)
 {
+	float fQuarter = (gF_FullPress * 0.25);
 	float fHalf = (gF_FullPress * 0.5);
 	float fThreeQuarters = (gF_FullPress * 0.75);
 	int iAD = (buttons & (IN_MOVELEFT | IN_MOVERIGHT));
@@ -310,7 +311,7 @@ bool DoButtonsMatchUp(int buttons, float forwardmove, float sidemove)
 	{
 		float abs = FloatAbs(sidemove);
 
-		if(sidemove != 0.0 && abs != fHalf && abs != fThreeQuarters)
+		if(sidemove != 0.0 && abs != fQuarter && abs != fHalf && abs != fThreeQuarters)
 		{
 			return false;
 		}
@@ -328,7 +329,7 @@ bool DoButtonsMatchUp(int buttons, float forwardmove, float sidemove)
 	{
 		float abs = FloatAbs(forwardmove);
 
-		if(forwardmove != 0.0 && abs != fHalf && abs != fThreeQuarters)
+		if(forwardmove != 0.0 && abs != fQuarter && abs != fHalf && abs != fThreeQuarters)
 		{
 			return false;
 		}
