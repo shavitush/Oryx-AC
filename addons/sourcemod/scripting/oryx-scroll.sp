@@ -225,7 +225,7 @@ public Action Command_PrintScrollStats(int client, int args)
 	}
 
 	char[] sScrollStats = new char[300];
-	GetScrollStatsFormatted(client, sScrollStats, 300);
+	GetScrollStatsFormatted(target, sScrollStats, 300);
 
 	ReplyToCommand(client, "Scroll stats for %N: %s", target, sScrollStats);
 
