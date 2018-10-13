@@ -20,8 +20,26 @@
 #include <sdktools>
 #include <oryx>
 
+#undef REQUIRE_PLUGIN
+#include <shavit>
+#include <bTimes-tas>
+#include <bTimes-timer_hack>
+
 #pragma newdecls required
 #pragma semicolon 1
+
+enum
+{
+	Timer_None,
+	Timer_Shavit,
+	Timer_Blacky2,
+	Timer_Blacky183
+}
+
+int gI_Timer = Timer_None;
+char gS_SpecialString[128];
+
+ConVar gCV_AllowBypass = null;
 
 EngineVersion gEV_Type = Engine_Unknown;
 
@@ -45,10 +63,12 @@ public Plugin myinfo =
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
+	CreateNative("Oryx_CanBypass", Native_CanBypass);
 	CreateNative("Oryx_Trigger", Native_OryxTrigger);
 	CreateNative("Oryx_WithinThreshold", Native_WithinThreshold);
 	CreateNative("Oryx_PrintToAdmins", Native_PrintToAdmins);
 	CreateNative("Oryx_PrintToAdminsConsole", Native_PrintToAdminsConsole);
+	CreateNative("Oryx_LogMessage", Native_LogMessage);
 
 	// registers library, check "bool LibraryExists(const char[] name)" in order to use with other plugins
 	RegPluginLibrary("oryx");
@@ -56,11 +76,24 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	return APLRes_Success;
 }
 
+public void OnAllPluginsLoaded()
+{
+	// workaround
+	if(gI_Timer == Timer_None &&
+		GetFeatureStatus(FeatureType_Native, "GetClientStyle") == FeatureStatus_Available &&
+		GetFeatureStatus(FeatureType_Native, "Style_GetConfig") == FeatureStatus_Available)
+	{
+		gI_Timer = Timer_Blacky183;
+	}
+}
+
 public void OnPluginStart()
 {
 	gH_Forwards_OnTrigger = CreateGlobalForward("Oryx_OnTrigger", ET_Event, Param_Cell, Param_CellByRef, Param_String);
 
 	gEV_Type = GetEngineVersion();
+
+	gCV_AllowBypass = CreateConVar("oryx_allow_bypass", "1", "Allow specific styles to bypass Oryx? Refer to README.md for information.", 0, true, 0.0, true, 1.0);
 
 	CreateConVar("oryx_version", ORYX_VERSION, "Plugin version.", (FCVAR_NOTIFY | FCVAR_DONTRECORD));
 	
@@ -70,6 +103,38 @@ public void OnPluginStart()
 	LoadTranslations("common.phrases");
 	
 	BuildPath(Path_SM, gS_LogPath, PLATFORM_MAX_PATH, "logs/oryx-ac.log");
+
+	if(LibraryExists("shavit"))
+	{
+		gI_Timer = Timer_Shavit;
+	}
+
+	else if(LibraryExists("tas"))
+	{
+		gI_Timer = Timer_Blacky2;
+	}
+}
+
+public void OnLibraryAdded(const char[] name)
+{
+	if(StrEqual(name, "shavit"))
+	{
+		gI_Timer = Timer_Shavit;
+	}
+
+	else if(StrEqual(name, "tas"))
+	{
+		gI_Timer = Timer_Blacky2;
+	}
+}
+
+public void OnLibraryRemoved(const char[] name)
+{
+	if((StrEqual(name, "shavit") && gI_Timer == Timer_Shavit) ||
+		(StrEqual(name, "tas") && gI_Timer == Timer_Blacky2))
+	{
+		gI_Timer = Timer_None;
+	}
 }
 
 public void OnMapStart()
@@ -88,6 +153,8 @@ public void OnMapStart()
 	{
 		PrecacheSound(gS_BeepSound, true);
 	}
+
+	delete hConfig;
 }
 
 public void OnClientPutInServer(int client)
@@ -144,6 +211,47 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	}
 
 	return Plugin_Continue;
+}
+
+public int Native_CanBypass(Handle plugin, int numParams)
+{
+	if(!gCV_AllowBypass.BoolValue)
+	{
+		return false;
+	}
+
+	int client = GetNativeCell(1);
+
+	switch(gI_Timer)
+	{
+		case Timer_Shavit:
+		{
+			Shavit_GetStyleStrings(Shavit_GetBhopStyle(client), sSpecialString, gS_SpecialString, 128);
+
+			if(StrContains(gS_SpecialString, "oryx_bypass", false) != -1)
+			{
+				return true;
+			}
+		}
+
+		case Timer_Blacky2:
+		{
+			return TAS_InEditMode(client);
+		}
+
+		case Timer_Blacky183:
+		{
+			any styleconfig[StyleConfig];
+			Style_GetConfig(GetClientStyle(client), styleconfig);
+
+			if(StrContains(styleconfig[Special_Key], "oryx_bypass", false) != -1)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 public int Native_OryxTrigger(Handle plugin, int numParams)
@@ -225,7 +333,7 @@ public int Native_OryxTrigger(Handle plugin, int numParams)
 
 	char[] sBuffer = new char[128];
 	Format(sBuffer, 128, "\x03%N\x01 - \x05%s\x01 Cheat: %s | Level: %s", client, sAuth, sCheatDescription, sLevel);
-	Oryx_PrintToAdmins(sBuffer);
+	Oryx_PrintToAdmins("%s", sBuffer);
 	
 	LogToFileEx(gS_LogPath, "%L - Cheat: %s | Level: %s", client, sCheatDescription, sLevel);
 
@@ -243,14 +351,16 @@ public int Native_WithinThreshold(Handle plugin, int numParams)
 
 public int Native_PrintToAdmins(Handle plugin, int numParams)
 {
-	char[] sMessage = new char[256];
-	GetNativeString(1, sMessage, 256);
+	static int iWritten = 0; // Useless?
+
+	char[] sBuffer = new char[300];
+	FormatNativeString(0, 1, 2, 300, iWritten, sBuffer);
 
 	for(int i = 1; i <= MaxClients; i++)
 	{
 		if(CheckCommandAccess(i, "oryx_admin", ADMFLAG_GENERIC))
 		{
-			PrintToChat(i, "%s\x04[ORYX]\x01 %s", (gEV_Type == Engine_CSGO)? " ":"", sMessage);
+			PrintToChat(i, "%s\x04[ORYX]\x01 %s", (gEV_Type == Engine_CSGO)? " ":"", sBuffer);
 
 			if(!gB_NoSound)
 			{
@@ -264,22 +374,41 @@ public int Native_PrintToAdmins(Handle plugin, int numParams)
 					ClientCommand(i, "play */%s", gS_BeepSound);
 				}
 			}
-
-			gB_NoSound = false;
 		}
 	}
+
+	gB_NoSound = false;
 }
 
 public int Native_PrintToAdminsConsole(Handle plugin, int numParams)
 {
-	char[] sMessage = new char[256];
-	GetNativeString(1, sMessage, 256);
+	static int iWritten = 0; // Useless?
+
+	char[] sBuffer = new char[300];
+	FormatNativeString(0, 1, 2, 300, iWritten, sBuffer);
 
 	for(int i = 1; i <= MaxClients; i++)
 	{
 		if(CheckCommandAccess(i, "oryx_admin", ADMFLAG_GENERIC))
 		{
-			PrintToConsole(i, "[ORYX] %s", sMessage);
+			PrintToConsole(i, "[ORYX] %s", sBuffer);
 		}
 	}
+}
+
+public int Native_LogMessage(Handle plugin, int numParams)
+{
+	char[] sPlugin = new char[32];
+
+	if(!GetPluginInfo(plugin, PlInfo_Name, sPlugin, 32))
+	{
+		GetPluginFilename(plugin, sPlugin, 32);
+	}
+
+	static int iWritten = 0; // Useless?
+
+	char[] sBuffer = new char[300];
+	FormatNativeString(0, 1, 2, 300, iWritten, sBuffer);
+	
+	LogToFileEx(gS_LogPath, "[%s] %s", sPlugin, sBuffer);
 }

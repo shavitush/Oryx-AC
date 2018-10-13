@@ -21,10 +21,8 @@
 #include <sdktools>
 #include <oryx>
 
-#if defined bhoptimer
 #undef REQUIRE_PLUGIN
 #include <shavit>
-#endif
 
 #pragma newdecls required
 #pragma semicolon 1
@@ -52,10 +50,11 @@
 // Decrease this to make the scroll anticheat more sensitive.
 // Samples will be taken from the last X jumps' data.
 // If the number is too high, logs might be cut off due to the scroll patterns being too long.
-#define SAMPLE_SIZE 50
+#define SAMPLE_SIZE_MIN 45
+#define SAMPLE_SIZE_MAX 55
 
 // Amount of ticks between jumps to not count one.
-#define TICKS_NOT_COUNT_JUMP 40
+#define TICKS_NOT_COUNT_JUMP 8
 
 // Maximum airtime per jump in ticks before we stop measuring. This is to prevent low-gravity style bans and players spamming their scroll wheel while falling to purposely make the anti-cheat ban them.
 #define TICKS_NOT_COUNT_AIR 135
@@ -77,12 +76,13 @@ ConVar sv_autobunnyhopping = null;
 bool gB_AutoBunnyhopping = false;
 bool gB_Shavit = false;
 
+int gI_SampleSize = 50;
+
 enum
 {
 	StatsArray_Scrolls,
 	StatsArray_BeforeGround,
 	StatsArray_AfterGround,
-	StatsArray_GroundTicks,
 	StatsArray_AverageTicks,
 	StatsArray_PerfectJump,
 	STATSARRAY_SIZE
@@ -97,16 +97,16 @@ enum
 	State_Releasing
 }
 
-// 6 cells:
+// 5 cells:
 // Scrolls before this jump.
 // Scrolls before touching ground (33 units from ground).
 // Scrolls after leaving ground (33 units from ground).
-// Ticks on ground.
 // Average ticks between each scroll input.
 // Is it a perfect jump?
 ArrayList gA_JumpStats[MAXPLAYERS+1];
 any gA_StatsArray[MAXPLAYERS+1][STATSARRAY_SIZE];
 
+int gI_GroundTicks[MAXPLAYERS+1];
 int gI_ReleaseTick[MAXPLAYERS+1];
 int gI_AirTicks[MAXPLAYERS+1];
 
@@ -142,6 +142,11 @@ public void OnPluginStart()
 	BuildPath(Path_SM, gS_LogPath, PLATFORM_MAX_PATH, "logs/oryx-ac-scroll.log"); 
 }
 
+public void OnMapStart()
+{
+	gI_SampleSize = GetRandomInt(SAMPLE_SIZE_MIN, SAMPLE_SIZE_MAX);
+}
+
 public void OnClientPutInServer(int client)
 {
 	gA_JumpStats[client] = new ArrayList(STATSARRAY_SIZE);
@@ -160,7 +165,6 @@ public void OnClientPutInServer(int client)
 		gA_JumpStats[client].Set(i, scrolls, StatsArray_Scrolls);
 		gA_JumpStats[client].Set(i, before, StatsArray_BeforeGround);
 		gA_JumpStats[client].Set(i, after, StatsArray_AfterGround);
-		gA_JumpStats[client].Set(i, GetRandomInt(1, 2), StatsArray_GroundTicks);
 		gA_JumpStats[client].Set(i, GetRandomInt(1, 2), StatsArray_AverageTicks);
 	}
 	#endif
@@ -227,7 +231,7 @@ public Action Command_PrintScrollStats(int client, int args)
 	}
 
 	char[] sScrollStats = new char[300];
-	GetScrollStatsFormatted(client, sScrollStats, 300);
+	GetScrollStatsFormatted(target, sScrollStats, 300);
 
 	ReplyToCommand(client, "Scroll stats for %N: %s", target, sScrollStats);
 
@@ -239,7 +243,7 @@ void GetScrollStatsFormatted(int client, char[] buffer, int maxlength)
 	FormatEx(buffer, maxlength, "%d%% perfs, %d sampled jumps: {", GetPerfectJumps(client), GetSampledJumps(client));
 
 	int iSize = gA_JumpStats[client].Length;
-	int iEnd = (iSize >= SAMPLE_SIZE)? (iSize - SAMPLE_SIZE):0;
+	int iEnd = (iSize >= gI_SampleSize)? (iSize - gI_SampleSize):0;
 
 	for(int i = iSize - 1; i >= iEnd; i--)
 	{
@@ -265,7 +269,7 @@ int GetSampledJumps(int client)
 	}
 
 	int iSize = gA_JumpStats[client].Length;
-	int iEnd = (iSize >= SAMPLE_SIZE)? (iSize - SAMPLE_SIZE):0;
+	int iEnd = (iSize >= gI_SampleSize)? (iSize - gI_SampleSize):0;
 
 	return (iSize - iEnd);
 }
@@ -274,7 +278,7 @@ int GetPerfectJumps(int client)
 {
 	int iPerfs = 0;
 	int iSize = gA_JumpStats[client].Length;
-	int iEnd = (iSize >= SAMPLE_SIZE)? (iSize - SAMPLE_SIZE):0;
+	int iEnd = (iSize >= gI_SampleSize)? (iSize - gI_SampleSize):0;
 	int iTotalJumps = (iSize - iEnd);
 
 	for(int i = iSize - 1; i >= iEnd; i--)
@@ -303,7 +307,6 @@ public Action OnPlayerRunCmd(int client, int &buttons)
 	return SetupMove(client, buttons);
 }
 
-#if defined bhoptimer
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style, any stylesettings[STYLESETTINGS_SIZE])
 {
 	// Ignore autobhop styles.
@@ -312,18 +315,8 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 		return Plugin_Continue;
 	}
 
-	// Ignore whitelisted styles.
-	char[] sSpecial = new char[32];
-	Shavit_GetStyleStrings(style, sSpecialString, sSpecial, 32);
-
-	if(StrContains(sSpecial, "oryx_bypass", false) != -1)
-	{
-		return Plugin_Continue;
-	}
-
 	return SetupMove(client, buttons);
 }
-#endif
 
 void ResetStatsArray(int client)
 {
@@ -364,9 +357,16 @@ float GetGroundDistance(int client)
 
 Action SetupMove(int client, int buttons)
 {
-	if(sv_autobunnyhopping != null && gB_AutoBunnyhopping)
+	if((sv_autobunnyhopping != null && gB_AutoBunnyhopping) || Oryx_CanBypass(client))
 	{
 		return Plugin_Continue;
+	}
+
+	bool bOnGround = ((GetEntityFlags(client) & FL_ONGROUND) > 0 || GetEntProp(client, Prop_Send, "m_nWaterLevel") >= 2);
+
+	if(bOnGround)
+	{
+		gI_GroundTicks[client]++;
 	}
 
 	float fAbsVelocity[3];
@@ -375,15 +375,24 @@ Action SetupMove(int client, int buttons)
 	float fSpeed = (SquareRoot(Pow(fAbsVelocity[0], 2.0) + Pow(fAbsVelocity[1], 2.0)));
 
 	// Player isn't really playing but is just trying to make the anticheat go nuts.
-	if(fSpeed < 250.0 || !IsLegalMoveType(client, false))
+	if(fSpeed > 225.0 && IsLegalMoveType(client, false))
 	{
-		ResetStatsArray(client);
-
-		return Plugin_Continue;
+		CollectJumpStats(client, bOnGround, buttons, fAbsVelocity[2]);
 	}
 
-	bool bOnGround = ((GetEntityFlags(client) & FL_ONGROUND) > 0 || GetEntProp(client, Prop_Send, "m_nWaterLevel") >= 2);
+	else
+	{
+		ResetStatsArray(client);
+	}
 
+	gB_PreviousGround[client] = bOnGround;
+	gI_PreviousButtons[client] = buttons;
+
+	return Plugin_Continue;
+}
+
+void CollectJumpStats(int client, bool bOnGround, int buttons, float fAbsVelocityZ)
+{
 	// States
 	int iGroundState = State_Nothing;
 	int iButtonState = State_Nothing;
@@ -429,7 +438,7 @@ Action SetupMove(int client, int buttons)
 
 			if(fDistance < 33.0)
 			{
-				if(fAbsVelocity[2] > 0.0 && gI_CurrentJump[client] > 1)
+				if(fAbsVelocityZ > 0.0 && gI_CurrentJump[client] > 1)
 				{
 					// 'Inject' data into the previous recorded jump.
 					int iJump = (gI_CurrentJump[client] - 1);
@@ -437,7 +446,7 @@ Action SetupMove(int client, int buttons)
 					gA_JumpStats[client].Set(iJump, iAfter + 1, StatsArray_AfterGround);
 				}
 
-				else if(fAbsVelocity[2] < 0.0)
+				else if(fAbsVelocityZ < 0.0)
 				{
 					gA_StatsArray[client][StatsArray_BeforeGround]++;
 				}
@@ -450,35 +459,32 @@ Action SetupMove(int client, int buttons)
 		gI_ReleaseTick[client] = iTicks;
 	}
 
-	if((bOnGround && gA_StatsArray[client][StatsArray_GroundTicks]++ > TICKS_NOT_COUNT_JUMP) ||
-		(!bOnGround && gI_AirTicks[client]++ > TICKS_NOT_COUNT_AIR))
+	if(!bOnGround && gI_AirTicks[client]++ > TICKS_NOT_COUNT_AIR)
 	{
 		ResetStatsArray(client);
 
-		return Plugin_Continue;
+		return;
 	}
 
 	if(iGroundState == State_Landing)
 	{
-		// Don't count the very first jump.
-		if(gA_StatsArray[client][StatsArray_GroundTicks] < (TICKS_NOT_COUNT_JUMP / 4))
+		int iScrolls = gA_StatsArray[client][StatsArray_Scrolls];
+
+		if(iScrolls == 0)
 		{
-			int iScrolls = gA_StatsArray[client][StatsArray_Scrolls];
+			ResetStatsArray(client);
 
-			if(iScrolls == 0)
-			{
-				ResetStatsArray(client);
+			return;
+		}
 
-				return Plugin_Continue;
-			}
-
+		if(gI_GroundTicks[client] < TICKS_NOT_COUNT_JUMP)
+		{
 			int iJump = gI_CurrentJump[client];
 			gA_JumpStats[client].Resize(iJump + 1);
 
 			gA_JumpStats[client].Set(iJump, iScrolls, StatsArray_Scrolls);
 			gA_JumpStats[client].Set(iJump, gA_StatsArray[client][StatsArray_BeforeGround], StatsArray_BeforeGround);
 			gA_JumpStats[client].Set(iJump, 0, StatsArray_AfterGround);
-			gA_JumpStats[client].Set(iJump, gA_StatsArray[client][StatsArray_GroundTicks], StatsArray_GroundTicks);
 			gA_JumpStats[client].Set(iJump, (gA_StatsArray[client][StatsArray_AverageTicks] / iScrolls), StatsArray_AverageTicks);
 			gA_JumpStats[client].Set(iJump, gA_StatsArray[client][StatsArray_PerfectJump], StatsArray_PerfectJump);
 
@@ -494,18 +500,15 @@ Action SetupMove(int client, int buttons)
 			gI_CurrentJump[client]++;
 		}
 
+		gI_GroundTicks[client] = 0;
+		
 		ResetStatsArray(client);
 	}
 
-	else if(iGroundState == State_Jumping && gI_CurrentJump[client] >= SAMPLE_SIZE)
+	else if(iGroundState == State_Jumping && gI_CurrentJump[client] >= gI_SampleSize)
 	{
 		AnalyzeStats(client);
 	}
-
-	gB_PreviousGround[client] = bOnGround;
-	gI_PreviousButtons[client] = buttons;
-
-	return Plugin_Continue;
 }
 
 int Min(int a, int b)
@@ -536,7 +539,7 @@ void AnalyzeStats(int client)
 	int iLowAfters = 0;
 	int iSameBeforeAfter = 0;
 
-	for(int i = (gI_CurrentJump[client] - SAMPLE_SIZE); i < gI_CurrentJump[client] - 1; i++)
+	for(int i = (gI_CurrentJump[client] - gI_SampleSize); i < gI_CurrentJump[client] - 1; i++)
 	{
 		// TODO: Cache iNextScrolls for the next time this code is ran. I'm tired and can't really think right now..
 		int iCurrentScrolls = gA_JumpStats[client].Get(i, StatsArray_Scrolls);
@@ -544,7 +547,7 @@ void AnalyzeStats(int client)
 		int iBefores = gA_JumpStats[client].Get(i, StatsArray_BeforeGround);
 		int iAfters = gA_JumpStats[client].Get(i, StatsArray_AfterGround);
 
-		if(i != SAMPLE_SIZE - 1)
+		if(i != gI_SampleSize - 1)
 		{
 			int iNextScrolls = gA_JumpStats[client].Get(i + 1, StatsArray_Scrolls);
 
@@ -585,7 +588,7 @@ void AnalyzeStats(int client)
 		}
 	}
 
-	float fIntervals = (float(iBadIntervals) / SAMPLE_SIZE);
+	float fIntervals = (float(iBadIntervals) / gI_SampleSize);
 
 	bool bTriggered = true;
 

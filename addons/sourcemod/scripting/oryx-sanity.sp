@@ -20,10 +20,8 @@
 #include <oryx>
 #include <dhooks>
 
-#if defined bhoptimer
 #undef REQUIRE_PLUGIN
 #include <shavit>
-#endif
 
 #pragma newdecls required
 #pragma semicolon 1
@@ -32,6 +30,7 @@
 #define DESC2 "Invalid wish velocity"
 #define DESC3 "Wish velocity is too high"
 #define DESC4 "Raw input discrepancy"
+#define DESC5 "Invalid buttons/wishspeeds"
 
 // Amount of ticks in a row where raw input can have discrepancies before acting.
 #define SAMPLE_SIZE 60
@@ -173,34 +172,17 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		return Plugin_Continue;
 	}
 
-	return SetupMove(client, buttons, mouse[0], angles[1], vel);
+	return SetupMove(client, buttons, mouse[0], angles[1], vel[0], vel[1]);
 }
 
-#if defined bhoptimer
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style, any stylesettings[STYLESETTINGS_SIZE], int mouse[2])
 {
-	// Don't do sanity checks on players that aren't running, to reduce false positive risks.
-	if(status != Timer_Running)
-	{
-		return Plugin_Continue;
-	}
-
-	// Ignore whitelisted styles.
-	char[] sSpecial = new char[32];
-	Shavit_GetStyleStrings(style, sSpecialString, sSpecial, 32);
-
-	if(StrContains(sSpecial, "oryx_bypass", false) != -1)
-	{
-		return Plugin_Continue;
-	}
-
-	return SetupMove(client, buttons, mouse[0], angles[1], vel);
+	return SetupMove(client, buttons, mouse[0], angles[1], vel[0], vel[1]);
 }
-#endif
 
-Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
+Action SetupMove(int client, int buttons, int mousedx, float yaw, float forwardmove, float sidemove)
 {
-	if(!IsPlayerAlive(client) || IsFakeClient(client))
+	if(Oryx_CanBypass(client))
 	{
 		return Plugin_Continue;
 	}
@@ -210,9 +192,11 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 
 	int iLR = (buttons & (IN_LEFT | IN_RIGHT));
 	float fDeltaAngle = yaw - gF_PreviousAngle[client];
+	gF_PreviousAngle[client] = yaw;
 
 	// Only pass if mouse movement isn't being tampered by +left/right.
 	// TODO: Don't allow cl_yawspeed 0?
+	// TODO: check onyl when tickcount + 1
 	if(!gB_TriggeredRawInput[client] && IsLegalMoveType(client) && mousedx != 0 && (iLR == (IN_LEFT | IN_RIGHT) || iLR == 0))
 	{
 		if(fDeltaAngle > 180.0)
@@ -258,7 +242,7 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 		if(++gI_BadInputStreak[client] >= SAMPLE_SIZE)
 		{
 			char[] sReason = new char[32];
-			FormatEx(sReason, 32, DESC4 ... "d%.03f x%d u%d", fDeltaAngle, mousedx, bUnsure);
+			FormatEx(sReason, 32, DESC4 ... " (d%.03f x%d u%d)", fDeltaAngle, mousedx, bUnsure);
 
 			Oryx_Trigger(client, TRIGGER_MEDIUM, sReason);
 
@@ -271,8 +255,6 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 	{
 		gI_BadInputStreak[client] = 0;
 	}
-
-	gF_PreviousAngle[client] = yaw;
 	
 	// Invalid usercmd->forwardmove or usercmd->sidemove.
 	// cl_forwardspeed and cl_sidespeed are the fully-pressed move values.
@@ -282,22 +264,27 @@ Action SetupMove(int client, int buttons, int mousedx, float yaw, float vel[3])
 	// https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#557
 	// https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#842
 
-	if((vel[0] == gF_FullPress && (buttons & IN_FORWARD) == 0) ||
-	   (vel[1] == -gF_FullPress && (buttons & IN_MOVELEFT) == 0) ||
-	   (vel[0] == -gF_FullPress && (buttons & IN_BACK) == 0) ||
-	   (vel[1] == gF_FullPress && (buttons & IN_MOVERIGHT) == 0))
+	if((forwardmove == gF_FullPress && (buttons & IN_FORWARD) == 0) ||
+	   (sidemove == -gF_FullPress && (buttons & IN_MOVELEFT) == 0) ||
+	   (forwardmove == -gF_FullPress && (buttons & IN_BACK) == 0) ||
+	   (sidemove == gF_FullPress && (buttons & IN_MOVERIGHT) == 0))
 	{
-		Oryx_Trigger(client, TRIGGER_DEFINITIVE, DESC1);
+		InvalidMoveTrigger(client, DESC1, buttons, forwardmove, sidemove);
 	}
 
-	else if(FloatAbs(vel[0]) > gF_FullPress || FloatAbs(vel[1]) > gF_FullPress)
+	else if(FloatAbs(forwardmove) > gF_FullPress || FloatAbs(sidemove) > gF_FullPress)
 	{
-		Oryx_Trigger(client, TRIGGER_DEFINITIVE, DESC3);
+		InvalidMoveTrigger(client, DESC2, buttons, forwardmove, sidemove);
 	}
 	
-	else if(!IsValidMove(vel[0]) || !IsValidMove(vel[1]))
+	else if(!IsValidMove(forwardmove) || !IsValidMove(sidemove))
 	{
-		Oryx_Trigger(client, TRIGGER_DEFINITIVE, DESC2);
+		InvalidMoveTrigger(client, DESC3, buttons, forwardmove, sidemove);
+	}
+
+	else if(!DoButtonsMatchUp(buttons, forwardmove, sidemove))
+	{
+		InvalidMoveTrigger(client, DESC5, buttons, forwardmove, sidemove);
 	}
 
 	return Plugin_Continue;
@@ -311,4 +298,64 @@ bool IsValidMove(float num)
 	float speed = gF_FullPress;
 
 	return (num == 0.0 || num == speed || num == (speed * 0.75) || num == (speed * 0.50) || num == (speed * 0.25));
+}
+
+bool DoButtonsMatchUp(int buttons, float forwardmove, float sidemove)
+{
+	float fQuarter = (gF_FullPress * 0.25);
+	float fHalf = (gF_FullPress * 0.5);
+	float fThreeQuarters = (gF_FullPress * 0.75);
+	int iAD = (buttons & (IN_MOVELEFT | IN_MOVERIGHT));
+
+	if(iAD == 0 || iAD == (IN_MOVELEFT | IN_MOVERIGHT))
+	{
+		float abs = FloatAbs(sidemove);
+
+		if(sidemove != 0.0 && abs != fQuarter && abs != fHalf && abs != fThreeQuarters)
+		{
+			return false;
+		}
+	}
+
+	else if((iAD == IN_MOVELEFT && sidemove != -gF_FullPress && sidemove != -fHalf && sidemove != fThreeQuarters) ||
+			(iAD == IN_MOVERIGHT && sidemove != gF_FullPress && sidemove != fHalf && sidemove != -fThreeQuarters))
+	{
+		return false;
+	}
+
+	int iSW = (buttons & (IN_FORWARD | IN_BACK));
+
+	if(iSW == 0 || iSW == (IN_FORWARD | IN_BACK))
+	{
+		float abs = FloatAbs(forwardmove);
+
+		if(forwardmove != 0.0 && abs != fQuarter && abs != fHalf && abs != fThreeQuarters)
+		{
+			return false;
+		}
+	}
+
+	else if((iSW == IN_FORWARD && forwardmove != gF_FullPress && forwardmove != fHalf && forwardmove != fThreeQuarters) ||
+			(iSW == IN_BACK && forwardmove != -gF_FullPress && forwardmove != -fHalf  && forwardmove != -fThreeQuarters))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+void InvalidMoveTrigger(int client, const char[] sDescription, int buttons, float forwardmove, float sidemove)
+{
+	char[] sLogMessage = new char[300];
+	FormatEx(sLogMessage, 300, "%L - %s: %c%c%c%c; forward %.2f; side %.2f",
+		client, sDescription,
+		((buttons & IN_FORWARD) > 0)? 'W':'-',
+		((buttons & IN_MOVELEFT) > 0)? 'A':'-',
+		((buttons & IN_BACK) > 0)? 'S':'-',
+		((buttons & IN_MOVERIGHT) > 0)? 'D':'-',
+		forwardmove, sidemove);
+
+	Oryx_LogMessage("%s", sLogMessage);
+	Oryx_PrintToAdminsConsole("%s", sLogMessage);
+	Oryx_Trigger(client, TRIGGER_DEFINITIVE, sDescription);
 }

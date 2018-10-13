@@ -17,13 +17,12 @@
 */
 
 #include <sourcemod>
+#include <sdktools>
 #include <oryx>
 #include <dhooks>
 
-#if defined bhoptimer
 #undef REQUIRE_PLUGIN
 #include <shavit>
-#endif
 
 #pragma newdecls required
 #pragma semicolon 1
@@ -186,6 +185,46 @@ public void OnLibraryRemoved(const char[] name)
 	}
 }
 
+bool IsSurfing(int client)
+{
+	float fPosition[3];
+	GetClientAbsOrigin(client, fPosition);
+
+	float fEnd[3];
+	fEnd = fPosition;
+	fEnd[2] -= 64.0;
+
+	float fMins[3];
+	GetEntPropVector(client, Prop_Send, "m_vecMins", fMins);
+
+	float fMaxs[3];
+	GetEntPropVector(client, Prop_Send, "m_vecMaxs", fMaxs);
+
+	Handle hTR = TR_TraceHullFilterEx(fPosition, fEnd, fMins, fMaxs, MASK_PLAYERSOLID, TRFilter_NoPlayers, client);
+
+	if(TR_DidHit(hTR))
+	{
+		float fNormal[3];
+		TR_GetPlaneNormal(hTR, fNormal);
+
+		delete hTR;
+
+		// If the plane normal's Z axis is 0.7 or below (alternatively, -0.7 when upside-down) then it's a surf ramp.
+		// https://mxr.alliedmods.net/hl2sdk-css/source/game/server/physics_main.cpp#1059
+
+		return (-0.7 <= fNormal[2] <= 0.7);
+	}
+
+	delete hTR;
+
+	return false;
+}
+
+public bool TRFilter_NoPlayers(int entity, int mask, any data)
+{
+	return (entity != view_as<int>(data) || (entity < 1 || entity > MaxClients));
+}
+
 int GetSampledStrafes(int client)
 {
 	if(gA_StrafeHistory[client] == null)
@@ -266,25 +305,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	return SetupMove(client, buttons, angles, vel);
 }
 
-#if defined bhoptimer
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style)
 {
-	// Ignore whitelisted styles.
-	char[] sSpecial = new char[32];
-	Shavit_GetStyleStrings(style, sSpecialString, sSpecial, 32);
-
-	if(StrContains(sSpecial, "oryx_bypass", false) != -1)
-	{
-		return Plugin_Continue;
-	}
-
 	return SetupMove(client, buttons, angles, vel);
 }
-#endif
 
 Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 {
-	if(!IsPlayerAlive(client) || IsFakeClient(client))
+	if(Oryx_CanBypass(client))
 	{
 		return Plugin_Continue;
 	}
@@ -327,10 +355,10 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 	* BASH remake
 	* Some of the logic may seem redundant, but it probably isn't.
 	*/
-	if((iFlags & FL_ONGROUND) == 0)
+	if((iFlags & (FL_ONGROUND | FL_INWATER)) == 0)
 	{
 		// WARNING: UGLY CODE.
-		if((buttons & (IN_MOVELEFT | IN_MOVERIGHT)) != (IN_MOVELEFT | IN_MOVERIGHT) ||
+		if((buttons & (IN_MOVELEFT | IN_MOVERIGHT)) != (IN_MOVELEFT | IN_MOVERIGHT) &&
 			(buttons & (IN_FORWARD | IN_BACK)) != (IN_FORWARD | IN_BACK))
 		{
 			if( // A/D
@@ -365,7 +393,7 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 
 			int iTick = gI_KeyTransitionTick[client] - gI_AngleTransitionTick[client];
 			
-			if(iTick > -26 && iTick < 26)
+			if(-25 <= iTick <= 25)
 			{
 				gA_StrafeHistory[client].Push(iTick);
 				gI_CurrentStrafe[client]++;
@@ -446,13 +474,13 @@ Action SetupMove(int client, int &buttons, float angles[3], float vel[3])
 		// +left/right
 		if(Oryx_WithinThreshold(fDeltaAngleAbs, gF_PreviousDeltaAngleAbs[client], (gF_PreviousDeltaAngleAbs[client] / 128.0)))
 		{
-			if((iFlags & FL_ONGROUND) == 0)
+			if((iFlags & FL_ONGROUND) == 0 && !IsSurfing(client))
 			{
 				gI_SteadyAngleStreak[client]++;
 
 				if(gI_SteadyAngleStreak[client] == 50)
 				{
-					Oryx_Trigger(client, TRIGGER_HIGH, DESC2);
+					Oryx_Trigger(client, TRIGGER_LOW, DESC2);
 
 					gI_SteadyAngleStreak[client] = 0;
 				}
@@ -541,8 +569,8 @@ void AnalyzeBASHStats(int client)
 		char[] sStrafeStats = new char[256];
 		FormatStrafeStats(client, sStrafeStats, 256);
 
-		Oryx_PrintToAdminsConsole(sStrafeStats);
-		LogToFileEx(gS_LogPath, "%s", sStrafeStats);
+		Oryx_PrintToAdminsConsole("%s", sStrafeStats);
+		LogToFileEx(gS_LogPath, "%L - (%d tick difference, %d zeroes) %s", client, iTickDifference, iZeroes, sStrafeStats);
 
 		return;
 	}
@@ -571,7 +599,7 @@ void AnalyzeBASHStats(int client)
 		char[] sStrafeStats = new char[256];
 		FormatStrafeStats(client, sStrafeStats, 256);
 
-		Oryx_PrintToAdminsConsole(sStrafeStats);
-		LogToFileEx(gS_LogPath, "%s", sStrafeStats);
+		Oryx_PrintToAdminsConsole("%s", sStrafeStats);
+		LogToFileEx(gS_LogPath, "%L - (%d tick difference, %d zeroes) %s", client, iTickDifference, iZeroes, sStrafeStats);
 	}
 }

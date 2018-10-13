@@ -10,7 +10,7 @@ This is a fork of Oryx, the bunnyhop anticheat written by Rusty/Nolan-O. The REA
 The main differences from the original version are:
 
 * I have supported CS:GO and TF2.
-* I edited the plugin to work with [bhoptimer](https://github.com/shavitush/bhoptimer). [bTimes](https://github.com/Nolan-O/bTimes) support has been dropped.
+* I edited the plugin to work with [bhoptimer](https://github.com/shavitush/bhoptimer). [bTimes](https://github.com/Nolan-O/bTimes) support is kept, and bTimes2 support has been added too. Note that bTimes is not free software, so I cannot actively maintain the support for it.
 * [smlib](https://github.com/splewis/smlib) is not a dependency anymore.
 * Optimizations have been applied.
 * Cleaned the code where I could. Most plugins will look as if they were rewritten, as I don't like the way Rusty wrote them in first place.
@@ -26,8 +26,6 @@ Rusty's notes:
 You need DHooks to build. You also need DHooks on your server for `oryx-sanity` and `oryx-strafe` to work.  
 It depends on gamedata from SDKTools therefore shouldn't break unless your server is out of date.
 
-All you need to do is make sure you've specified your timer in oryx.inc by defining either `notimer` or `bhoptimer`. Build each file manually with the SourceMod compiler, like usual.  
-If `bhoptimer` is defined, you will need [bhoptimer](https://github.com/shavitush/bhoptimer)'s include file.  
 Send a pull request if you want to support other timers.
 
 # Documentation  
@@ -65,6 +63,7 @@ Unsynchronised movement | Wish velocity does not align with with the player's bu
 Invalid wish velocity | Wish velocity can only be specific values ([link 1](https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#557), [link 2](https://mxr.alliedmods.net/hl2sdk-css/source/game/client/in_main.cpp#842)) | oryx-sanity
 Wish velocity is too high | Wish velocity exceeds the default `cl_forwardspeed` or `cl_sidespeed` settings | oryx-sanity
 Wrong mouse inputs | Raw input has discrepancies with the view angles' yaw delta | oryx-sanity
+Invalid buttons/wishspeeds | Buttons and wishspeeds do not match | oryx-sanity
 Scripted jumps (havg) | Too many perfect jumps indicates a potential jump script usage | oryx-scroll
 Scripted jumps (havgp, patt1, patt2, wpatt, wpatt2) | Too many perfect jumps while maintaining obviously weird scroll stats | oryx-scroll
 Scripted jumps (nobf, bf-af, noaf) | Inhuman stats for scrolls before touching the ground and after jumping | oryx-scroll
@@ -72,7 +71,7 @@ Scroll macro (highn) | Way too many scroll inputs per jump, giving away the play
 Scroll cheat (interval, ticks) | Analysis on interval between scrolls ~~and ticks on ground~~ (WIP). These methods are at low detection level due to the nature of UDP causing packets to not be in the correct order all the time | oryx-scroll
 
 **Note**: `oryx-sanity` **will** cause false positives with gamepads and controllers.  
-**Note 2**: If using [bhoptimer](https://github.com/shavitush/bhoptimer), add `oryx_bypass` to the special string. This setting will disable the sanity, strafe, and movement config anticheats from triggering on the style. For example:
+**Note 2**: If using [bhoptimer](https://github.com/shavitush/bhoptimer), add `oryx_bypass` to the special string. This setting will disable the anticheats from triggering on the style. For example:
 
 ```
 "7"
@@ -99,6 +98,9 @@ Scroll cheat (interval, ticks) | Analysis on interval between scrolls ~~and tick
 	"specialstring"		"100gainstrafe;tas;oryx_bypass"
 }
 ```
+
+**Note 3**: For [bTimes v1.8.3](https://github.com/Nolan-O/bTimes), change the `special` flag to `oryx_bypass` to disable the anticheats from triggering.  
+**Note 4**: For bTimes2, TAS (while editing) will be automatically excluded from the anticheat.
 
 Docs on natives are found in `oryx.inc`, using the SourceMod self-documenting style.
 

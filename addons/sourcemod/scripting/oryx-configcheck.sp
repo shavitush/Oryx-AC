@@ -19,10 +19,8 @@
 #include <sourcemod>
 #include <oryx>
 
-#if defined bhoptimer
 #undef REQUIRE_PLUGIN
 #include <shavit>
-#endif
 
 #pragma newdecls required
 #pragma semicolon 1
@@ -39,9 +37,7 @@ int gI_LastDetection[MAXPLAYERS+1];
 
 int gI_PerfectConfigStreak[MAXPLAYERS+1];
 int gI_PreviousButtons[MAXPLAYERS+1];
-#if defined bhoptimer
 int gI_JumpsFromZone[MAXPLAYERS+1];
-#endif
 
 bool gB_Shavit = false;
 
@@ -58,7 +54,7 @@ public void OnPluginStart()
 {
 	RegAdminCmd("config_streak", Command_ConfigStreak, ADMFLAG_BAN, "Print the config stat buffer for a given player.");
 
-	gCV_KLookDetection = CreateConVar("oryx-configcheck_klook", "1", "How to treat +klook usage?\n-1 - do not.\n0 - disable +klook.\n1 - disable + alert admins and log.\n2 - kick player.", 0, true, -1.0, true, 2.0);
+	gCV_KLookDetection = CreateConVar("oryx-configcheck_klook", "0", "How to treat +klook usage?\n-1 - do not.\n0 - disable +klook.\n1 - disable + alert admins and log.\n2 - kick player.", 0, true, -1.0, true, 2.0);
 	AutoExecConfig();
 
 	LoadTranslations("common.phrases");
@@ -72,9 +68,7 @@ public void OnClientPutInServer(int client)
 	gI_LastDetection[client] = 0;
 
 	gI_PerfectConfigStreak[client] = 0;
-	#if defined bhoptimer
 	gI_JumpsFromZone[client] = 0;
-	#endif
 }
 
 public void OnLibraryAdded(const char[] name)
@@ -134,25 +128,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	return SetupMove(client, buttons, vel);
 }
 
-#if defined bhoptimer
 public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style)
 {
-	// Ignore whitelisted styles.
-	char[] sSpecial = new char[32];
-	Shavit_GetStyleStrings(style, sSpecialString, sSpecial, 32);
-
-	if(StrContains(sSpecial, "oryx_bypass", false) != -1)
-	{
-		return Plugin_Continue;
-	}
-
 	return SetupMove(client, buttons, vel);
 }
-#endif
 
 Action SetupMove(int client, int &buttons, float vel[3])
 {
-	if(!IsPlayerAlive(client) || IsFakeClient(client))
+	if(Oryx_CanBypass(client))
 	{
 		return Plugin_Continue;
 	}
@@ -200,25 +183,25 @@ Action SetupMove(int client, int &buttons, float vel[3])
 		}
 	}
 	
-	#if defined bhoptimer
-	// Attempt at only sampling real gameplay (out of the start zone).
-	if(Shavit_InsideZone(client, Zone_Start, -1))
+	if(gB_Shavit)
 	{
-		gI_JumpsFromZone[client] = 0;
+		if(Shavit_InsideZone(client, Zone_Start, -1))
+		{
+			gI_JumpsFromZone[client] = 0;
 
-		return Plugin_Continue;
-	}
-	
-	if((iFlags & FL_ONGROUND) > 0 && (buttons & IN_JUMP) > 0)
-	{
-		gI_JumpsFromZone[client]++;
-	}
+			return Plugin_Continue;
+		}
 		
-	if(gI_JumpsFromZone[client] < 2)
-	{
-		return Plugin_Continue;
+		if((iFlags & FL_ONGROUND) > 0 && (buttons & IN_JUMP) > 0)
+		{
+			gI_JumpsFromZone[client]++;
+		}
+			
+		if(gI_JumpsFromZone[client] < 2)
+		{
+			return Plugin_Continue;
+		}
 	}
-	#endif
 	
 	if((iFlags & FL_ONGROUND) == 0)
 	{
