@@ -50,7 +50,8 @@
 // Decrease this to make the scroll anticheat more sensitive.
 // Samples will be taken from the last X jumps' data.
 // If the number is too high, logs might be cut off due to the scroll patterns being too long.
-#define SAMPLE_SIZE 50
+#define SAMPLE_SIZE_MIN 45
+#define SAMPLE_SIZE_MAX 55
 
 // Amount of ticks between jumps to not count one.
 #define TICKS_NOT_COUNT_JUMP 40
@@ -74,6 +75,8 @@ ConVar sv_autobunnyhopping = null;
 
 bool gB_AutoBunnyhopping = false;
 bool gB_Shavit = false;
+
+int gI_SampleSize = 50;
 
 enum
 {
@@ -138,6 +141,11 @@ public void OnPluginStart()
 	gB_Shavit = LibraryExists("shavit");
 	
 	BuildPath(Path_SM, gS_LogPath, PLATFORM_MAX_PATH, "logs/oryx-ac-scroll.log"); 
+}
+
+public void OnMapStart()
+{
+	gI_SampleSize = GetRandomInt(SAMPLE_SIZE_MIN, SAMPLE_SIZE_MAX);
 }
 
 public void OnClientPutInServer(int client)
@@ -237,7 +245,7 @@ void GetScrollStatsFormatted(int client, char[] buffer, int maxlength)
 	FormatEx(buffer, maxlength, "%d%% perfs, %d sampled jumps: {", GetPerfectJumps(client), GetSampledJumps(client));
 
 	int iSize = gA_JumpStats[client].Length;
-	int iEnd = (iSize >= SAMPLE_SIZE)? (iSize - SAMPLE_SIZE):0;
+	int iEnd = (iSize >= gI_SampleSize)? (iSize - gI_SampleSize):0;
 
 	for(int i = iSize - 1; i >= iEnd; i--)
 	{
@@ -263,7 +271,7 @@ int GetSampledJumps(int client)
 	}
 
 	int iSize = gA_JumpStats[client].Length;
-	int iEnd = (iSize >= SAMPLE_SIZE)? (iSize - SAMPLE_SIZE):0;
+	int iEnd = (iSize >= gI_SampleSize)? (iSize - gI_SampleSize):0;
 
 	return (iSize - iEnd);
 }
@@ -272,7 +280,7 @@ int GetPerfectJumps(int client)
 {
 	int iPerfs = 0;
 	int iSize = gA_JumpStats[client].Length;
-	int iEnd = (iSize >= SAMPLE_SIZE)? (iSize - SAMPLE_SIZE):0;
+	int iEnd = (iSize >= gI_SampleSize)? (iSize - gI_SampleSize):0;
 	int iTotalJumps = (iSize - iEnd);
 
 	for(int i = iSize - 1; i >= iEnd; i--)
@@ -484,7 +492,7 @@ Action SetupMove(int client, int buttons)
 		ResetStatsArray(client);
 	}
 
-	else if(iGroundState == State_Jumping && gI_CurrentJump[client] >= SAMPLE_SIZE)
+	else if(iGroundState == State_Jumping && gI_CurrentJump[client] >= gI_SampleSize)
 	{
 		AnalyzeStats(client);
 	}
@@ -523,7 +531,7 @@ void AnalyzeStats(int client)
 	int iLowAfters = 0;
 	int iSameBeforeAfter = 0;
 
-	for(int i = (gI_CurrentJump[client] - SAMPLE_SIZE); i < gI_CurrentJump[client] - 1; i++)
+	for(int i = (gI_CurrentJump[client] - gI_SampleSize); i < gI_CurrentJump[client] - 1; i++)
 	{
 		// TODO: Cache iNextScrolls for the next time this code is ran. I'm tired and can't really think right now..
 		int iCurrentScrolls = gA_JumpStats[client].Get(i, StatsArray_Scrolls);
@@ -531,7 +539,7 @@ void AnalyzeStats(int client)
 		int iBefores = gA_JumpStats[client].Get(i, StatsArray_BeforeGround);
 		int iAfters = gA_JumpStats[client].Get(i, StatsArray_AfterGround);
 
-		if(i != SAMPLE_SIZE - 1)
+		if(i != gI_SampleSize - 1)
 		{
 			int iNextScrolls = gA_JumpStats[client].Get(i + 1, StatsArray_Scrolls);
 
@@ -572,7 +580,7 @@ void AnalyzeStats(int client)
 		}
 	}
 
-	float fIntervals = (float(iBadIntervals) / SAMPLE_SIZE);
+	float fIntervals = (float(iBadIntervals) / gI_SampleSize);
 
 	bool bTriggered = true;
 
