@@ -140,18 +140,24 @@ Action SetupMove(int client, int &buttons, float vel[3])
 		return Plugin_Continue;
 	}
 
-	int iFlags = GetEntityFlags(client);
+	bool bMoveLeft = ((buttons & IN_MOVELEFT) > 0);
+	bool bMoveRight = ((buttons & IN_MOVERIGHT) > 0);
+	bool bForward = ((buttons & IN_FORWARD) > 0);
+	bool bBack = ((buttons & IN_BACK) > 0);
+	bool bAandD = (bMoveLeft && bMoveRight);
+	bool bSandW = (bBack && bForward);
+
+	bool bOnGround = ((GetEntityFlags(client) & FL_ONGROUND) > 0);
 	int iDetect = gCV_KLookDetection.IntValue;
 
 	if(iDetect > -1)
 	{
-		if((iFlags & FL_ONGROUND) == 0)
+		if(!bOnGround)
 		{
-			int iLR = (buttons & (IN_MOVELEFT | IN_MOVERIGHT));
-			int iFB = (buttons & (IN_FORWARD | IN_BACK));
+			bool bAorD = (bMoveLeft || bMoveRight);
+			bool bSorW = (bBack || bForward);
 
-			if((vel[0] == 0.0 && iFB != 0 && iFB != (IN_FORWARD | IN_BACK)) ||
-				(vel[1] == 0.0 && iLR != 0 && iLR != (IN_MOVELEFT | IN_MOVERIGHT)))
+			if((vel[0] == 0.0 && bSorW && !bSandW) || (vel[1] == 0.0 && bAorD && !bAandD))
 			{
 				// Disable movement for the whole jump
 				gB_KLookUsed[client] = true;
@@ -192,7 +198,7 @@ Action SetupMove(int client, int &buttons, float vel[3])
 			return Plugin_Continue;
 		}
 		
-		if((iFlags & FL_ONGROUND) > 0 && (buttons & IN_JUMP) > 0)
+		if(bOnGround && (buttons & IN_JUMP) > 0)
 		{
 			gI_JumpsFromZone[client]++;
 		}
@@ -203,19 +209,24 @@ Action SetupMove(int client, int &buttons, float vel[3])
 		}
 	}
 	
-	if((iFlags & FL_ONGROUND) == 0)
+	if(!bOnGround)
 	{
+		bool bOldMoveLeft = ((gI_PreviousButtons[client] & IN_MOVELEFT) > 0);
+		bool bOldMoveRight = ((gI_PreviousButtons[client] & IN_MOVERIGHT) > 0);
+		bool bOldForward = ((gI_PreviousButtons[client] & IN_FORWARD) > 0);
+		bool bOldBack = ((gI_PreviousButtons[client] & IN_BACK) > 0);
+
 		// Check for perfect transitions in W/A/S/D.
-		if(((buttons & IN_MOVELEFT) == 0 && (buttons & IN_MOVERIGHT) > 0 && (gI_PreviousButtons[client] & IN_MOVERIGHT) == 0 && (gI_PreviousButtons[client] & IN_MOVELEFT) > 0) || 
-			((buttons & IN_MOVERIGHT) == 0 && (buttons & IN_MOVELEFT) > 0 && (gI_PreviousButtons[client] & IN_MOVELEFT) == 0 && (gI_PreviousButtons[client] & IN_MOVERIGHT) > 0) ||
-			((buttons & IN_FORWARD) == 0 && (buttons & IN_BACK) > 0 && (gI_PreviousButtons[client] & IN_BACK) == 0 && (gI_PreviousButtons[client] & IN_FORWARD) > 0) ||
-			((buttons & IN_BACK) == 0 && (buttons & IN_FORWARD) > 0 && (gI_PreviousButtons[client] & IN_FORWARD) == 0 && (gI_PreviousButtons[client] & IN_BACK) > 0))
+		if((!bMoveLeft && bMoveRight && !bOldMoveRight && bOldMoveLeft) || 
+			(!bMoveRight && bMoveLeft && !bOldMoveLeft && bOldMoveRight) ||
+			(!bForward && bBack && !bOldBack && bOldForward) ||
+			(!bBack && bForward && !bOldForward && bOldBack))
 		{
 			PerfectTransition(client);
 		}
 
-		// Are both moveleft/moveright pressed?
-		else if(buttons & (IN_MOVELEFT | IN_MOVERIGHT) == (IN_MOVELEFT | IN_MOVERIGHT))
+		// Are both A/D or S/W pressed?
+		else if(bAandD || bSandW)
 		{
 			gI_PerfectConfigStreak[client] = 0;
 		}
