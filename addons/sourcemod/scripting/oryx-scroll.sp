@@ -72,6 +72,8 @@ public Plugin myinfo =
 }
 
 ConVar sv_autobunnyhopping = null;
+stylesettings_t aSettings;
+
 
 bool gB_AutoBunnyhopping = false;
 bool gB_Shavit = false;
@@ -307,10 +309,10 @@ public Action OnPlayerRunCmd(int client, int &buttons)
 	return SetupMove(client, buttons);
 }
 
-public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style, any stylesettings[STYLESETTINGS_SIZE])
+public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float vel[3], float angles[3], TimerStatus status, int track, int style, stylesettings_t stylesettings, int mouse[2])
 {
 	// Ignore autobhop styles.
-	if(stylesettings[bAutobhop])
+	if(aSettings.bAutobhop)
 	{
 		return Plugin_Continue;
 	}
