@@ -203,7 +203,7 @@ Action SetupMove(int client, int &buttons, float vel[3])
 		}
 	}
 	
-	if((iFlags & FL_ONGROUND) == 0)
+	if(((iFlags & FL_ONGROUND) == 0) || (buttons & IN_JUMP) > 0)
 	{
 		// Check for perfect transitions in W/A/S/D.
 		if(((buttons & IN_MOVELEFT) == 0 && (buttons & IN_MOVERIGHT) > 0 && (gI_PreviousButtons[client] & IN_MOVERIGHT) == 0 && (gI_PreviousButtons[client] & IN_MOVELEFT) > 0) || 
@@ -215,7 +215,7 @@ Action SetupMove(int client, int &buttons, float vel[3])
 		}
 
 		// Are both moveleft/moveright pressed?
-		else if(buttons & (IN_MOVELEFT | IN_MOVERIGHT) == (IN_MOVELEFT | IN_MOVERIGHT))
+		else if((buttons & (IN_MOVELEFT | IN_MOVERIGHT) == (IN_MOVELEFT | IN_MOVERIGHT)) || (buttons & (IN_BACK | IN_FORWARD) == (IN_BACK | IN_FORWARD)))
 		{
 			gI_PerfectConfigStreak[client] = 0;
 		}
